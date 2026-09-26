@@ -166,7 +166,7 @@ Processing takes a few minutes to an hour; App Store Connect emails when the bui
 Apple also emails if the upload has a problem (a missing icon size, a privacy-manifest or
 Info.plist error, an invalid entitlement).
 
-From the command line, the same with an App Store Connect API key (see [CI](#10-ci)).
+Without a Mac, the `TestFlight` workflow does the same on GitHub's macOS runners (see [CI](#10-ci)).
 
 ## 6. TestFlight
 
@@ -302,33 +302,36 @@ after every change to `Apps/project.yml`, and after adding, removing or renaming
 `Apps/Resources/*/Info.plist` and `*.entitlements`. The `Sundial` scheme's test action must keep
 `SundialUITests`, which the screenshot step runs.
 
-**Uploading to TestFlight** is not automated yet. Two ways, when wanted:
+**Uploading to TestFlight: `.github/workflows/testflight.yml`** (the `TestFlight` workflow). It
+archives the `Sundial` scheme on a GitHub macOS runner, signs it for the App Store and uploads it
+to App Store Connect, on a `v*` tag (`git tag v3.0.0 && git push origin v3.0.0`) or by hand
+(Actions → TestFlight → Run workflow). No Mac is involved: signing is automatic ("cloud
+signing"), so Xcode creates the distribution certificate and profiles through the API key and
+nothing is stored in the repository. The build number is the workflow's run number, so every
+upload is higher than the last; the version is `MARKETING_VERSION` from `Apps/project.yml`.
 
-- **Xcode Cloud** (included with the membership, 25 compute hours a month): in Xcode, Integrate →
-  Create Workflow for the `Sundial` scheme, with an **Archive – iOS** action, deployment
-  preparation "TestFlight and App Store", and a post-action that sends the build to the internal
-  TestFlight group. Start it on a tag (e.g. `v*`) or on pushes to a release branch. Xcode Cloud
-  sets the build number itself and builds the committed project as it is.
+It needs four repository secrets (Settings → Secrets and variables → Actions):
 
-- **GitHub Actions** with an App Store Connect API key (Users and Access → Integrations → App
-  Store Connect API → Team Keys, role App Manager; store the `.p8` file, key id and issuer id as
-  secrets), as a separate job or workflow that runs on tags:
+| Secret | Value |
+|---|---|
+| `ASC_KEY_ID` | the key's Key ID |
+| `ASC_ISSUER_ID` | the Issuer ID shown above the keys list |
+| `ASC_KEY_P8` | the whole contents of the downloaded `AuthKey_<KEY_ID>.p8` (downloadable once) |
+| `APPLE_TEAM_ID` | the ten-character Team ID (not secret; a repository variable works too) |
 
-  ```bash
-  xcodebuild archive -project Apps/Sundial.xcodeproj -scheme Sundial \
-    -destination 'generic/platform=iOS' -archivePath build/Sundial.xcarchive \
-    DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
-    -allowProvisioningUpdates -authenticationKeyPath "$KEY_PATH" \
-    -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER_ID"
-  xcodebuild -exportArchive -archivePath build/Sundial.xcarchive \
-    -exportOptionsPlist ExportOptions.plist -exportPath build/export \
-    -allowProvisioningUpdates -authenticationKeyPath "$KEY_PATH" \
-    -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER_ID"
-  ```
+Create the key in App Store Connect → Users and Access → Integrations → App Store Connect API →
+**Team Keys**, with the **Admin** role (or App Manager with access to Certificates, Identifiers &
+Profiles): cloud signing needs to create certificates and profiles. Only you should create the
+key and paste it into GitHub; it never belongs in the repository or in a chat.
 
-  with an `ExportOptions.plist` whose `method` is `app-store-connect`, `destination` is
-  `upload`, `signingStyle` is `automatic` and `teamID` is the Team ID. Passing
-  `CURRENT_PROJECT_VERSION` on the command line sets the build number of all four targets.
+The workflow does not create the App Store Connect record: the record (step 4), and the bundle
+ids and App Group (step 2), must exist before the first upload. After processing, the build
+appears in TestFlight (step 6).
+
+**Xcode Cloud** is the alternative (included with the membership, 25 compute hours a month): in
+Xcode, Integrate → Create Workflow for the `Sundial` scheme, with an **Archive – iOS** action,
+deployment preparation "TestFlight and App Store", and a post-action that sends the build to the
+internal TestFlight group. It needs a Mac once, to create the workflow.
 
 ## 11. Each release
 
