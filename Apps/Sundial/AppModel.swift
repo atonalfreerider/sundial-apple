@@ -44,6 +44,9 @@ final class AppModel: ObservableObject {
     // AstrologyPanel
     @Published private(set) var zodiacProfile: ZodiacProfile
     @Published private(set) var hasReading = false
+    /// Today's reading as the instrument shows it, repeated in the astrology menu: on short screens
+    /// the instrument's card can cut it short (see APPS.md, "Today's reading in the menu").
+    @Published private(set) var readingText: String?
     @Published private(set) var horoscopeStatus = AppModel.defaultStatus
     @Published private(set) var horoscopeAvailability: HoroscopeService.Availability
 
@@ -137,6 +140,7 @@ final class AppModel: ObservableObject {
         if let horoscope = settings.zodiac.getCurrentHoroscope(zodiacProfile, Self.today()) {
             instrumentModel.setHoroscope(horoscope)
             hasReading = true
+            readingText = horoscope
             horoscopeStatus = Self.displayedStatus
         }
         refreshCalendarAccess()
@@ -330,6 +334,9 @@ final class AppModel: ObservableObject {
             return
         }
         zodiacProfile = instrumentModel.setZodiacProfile(profile)
+        // The instrument now shows the reading saved for this profile, if any (a changed profile
+        // has none); the menu's copy follows it. (hasReading stays as Android leaves it.)
+        readingText = settings.zodiac.getCurrentHoroscope(zodiacProfile, Self.today())
         astrologyForm.setZodiacProfile(zodiacProfile)
         if !zodiacProfile.isComplete {
             horoscopeStatus = "Enter birth date and time for a private on-device horoscope."
@@ -381,6 +388,7 @@ final class AppModel: ObservableObject {
                 if requested.signature == self.zodiacProfile.signature && date == Self.today() {
                     self.instrumentModel.setHoroscope(horoscope)
                     self.hasReading = true
+                    self.readingText = horoscope
                 }
                 self.horoscopeStatus = Self.writtenStatus
                 self.refreshWidgets()
@@ -406,6 +414,7 @@ final class AppModel: ObservableObject {
         let reading = settings.zodiac.getCurrentHoroscope(zodiacProfile, Self.today())
         instrumentModel.setHoroscope(reading)
         hasReading = reading != nil
+        readingText = reading
         if reading == nil && !horoscopeGenerating
             && (horoscopeStatus == Self.writtenStatus || horoscopeStatus == Self.displayedStatus) {
             horoscopeStatus = Self.defaultStatus
@@ -433,6 +442,7 @@ final class AppModel: ObservableObject {
         settings.zodiac.hideReportedHoroscope(request.date)
         instrumentModel.setHoroscope(nil)
         hasReading = false
+        readingText = nil
         horoscopeStatus = "Reading hidden. Write a new reading whenever you like."
         refreshWidgets()
         let version = Self.appVersion
@@ -545,6 +555,7 @@ final class AppModel: ObservableObject {
         zodiacProfile = ScreenshotScene.sampleProfile
         astrologyForm.setZodiacProfile(ScreenshotScene.sampleProfile)
         hasReading = true
+        readingText = scene.astrology ? ScreenshotScene.sampleReading : nil
         horoscopeStatus = Self.writtenStatus
         syncControls()
         openMenu = TuckCorner(screenshotMenu: scene.menu)

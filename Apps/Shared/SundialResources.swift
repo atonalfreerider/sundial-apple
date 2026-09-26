@@ -17,8 +17,9 @@ import SundialRender
 // `nonisolated` keeps these usable from widget timeline providers (which run off the main thread)
 // whatever the targets' default actor isolation is.
 nonisolated public enum SundialResources {
-    /// The App Group every target joins, so the app, its widgets and the watch app read one set of
-    /// settings.
+    /// The App Group every target joins: the app and its widgets share one set of settings on the
+    /// iPhone or iPad, and the watch app and its complications share another on the watch (not
+    /// synced).
     public static let appGroup = "group.com.metavirtuoso.sundial"
 
     /// sundial_condensed.ttf in each target's bundle: the label face, FontFace.sundialCondensed.

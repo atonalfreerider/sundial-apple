@@ -10,6 +10,10 @@ import SwiftUI
 /// status bar hidden the top inset is 0 on iPad and in iPhone landscape, so only portrait iPhones
 /// with a notch or an island start the dial below it, on the window's black, as Android 8–14 does
 /// in fullscreen with the default cutout mode. (SundialKit has no top inset for its chrome yet.)
+/// On those iPhones the band above the dial is too short for the horoscope's first card, so the
+/// instrument falls back to a single card, without its AI caption and with the reading cut short;
+/// the astrology menu repeats the whole reading and the caption (AppModel.readingText) until
+/// SundialKit's fallback card keeps both.
 struct ContentView: View {
     @ObservedObject var model: AppModel
 

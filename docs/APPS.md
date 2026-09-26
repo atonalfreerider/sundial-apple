@@ -10,8 +10,10 @@ XcodeGen from `Apps/project.yml`:
 | SundialWatch | watchOS 10+ | `com.metavirtuoso.sundial.watchkitapp` | the Wear OS app: `wear/…/WatchActivity.kt`, `WatchSettingsActivity.kt`, `WatchPreferences.kt` |
 | SundialWatchWidgets | watchOS 10+ WidgetKit extension | `com.metavirtuoso.sundial.watchkitapp.widgets` | the Wear OS watch face: Apple has no custom faces, so the instrument comes to any face as complications |
 
-All four share settings through the App Group `group.com.metavirtuoso.sundial`
-(`UserDefaults(suiteName:)` handed to SundialCore's `SettingsStore`).
+All four join the App Group `group.com.metavirtuoso.sundial` (`UserDefaults(suiteName:)` handed
+to SundialCore's `SettingsStore`): on the iPhone or iPad the app and its widgets share one set of
+settings, and on the watch the watch app and its complications share another. The two devices'
+containers are separate and not synced, as the Wear OS app keeps its own settings.
 
 ## Code layout
 
@@ -69,9 +71,15 @@ Only where the platform requires it:
   view, redrawn daily) and Lock wallpaper (the Earth view, every 15 minutes) become two Home
   Screen / StandBy widgets, *Sundial* and *Sundial Earth View*, both redrawn every quarter hour;
   the Lock Screen gets tinted accessory summaries (the year dial, the Moon, the season). A widget
-  extension has about 30 MB, so the widgets draw at no more than 2× and let their Instrument go
-  after every image. Like the wallpaper, they always draw the northern hemisphere: the phone's
-  SOUTHERN HEMISPHERE switch lives in the view only and is not saved, as on Android.
+  extension has about 30 MB, so the widgets let their Instrument go after every image and draw
+  the solar view at no more than 2× and the Earth view at 1× (softer than the screen): SundialKit's
+  sweep-gradient rings and their CGImages are cached process-wide, outlive every Instrument, and
+  under the Earth view's zoomed camera are far larger than the widget. On a tinted or clear Home
+  Screen (iOS 18+) the instrument keeps its full colour. Unlike the wallpaper, the widgets do not
+  show today's reading yet: SundialKit's wallpaper path titles its second card "CONTINUED ·
+  CELESTIAL WALLPAPER", with no AI disclosure, and a widget cannot report it. Like the wallpaper,
+  they always draw the northern hemisphere: the phone's SOUTHERN HEMISPHERE switch lives in the
+  view only and is not saved, as on Android.
 - **Watch face → complications.** Apple Watch has no custom faces.
 - **Gemini Nano → Apple Foundation Models** (iOS 26+, Apple Intelligence devices).
 - **Calendar access.** EventKit's prompt instead of Android's permission flow. The button on the
@@ -83,7 +91,16 @@ Only where the platform requires it:
 - **Top safe area.** In portrait on an iPhone with a Dynamic Island or a notch the instrument
   starts below it, so the clock and the Earth view's zone caption stay visible (Android's small
   punch-hole camera sits in the clock's gap). Elsewhere it fills the screen.
+- **Today's reading in the menu** (not in the Android app). On those shorter instruments (the
+  6.1- and 6.3-inch iPhones with an island or a notch, such as the 14, 15, 16, 16e and 17, and in
+  the Earth view larger ones such as the 16 Plus and the Air) the band above the dial is under
+  the horoscope card's 92-pt minimum, so SundialKit falls back to a single card with no "WRITTEN
+  BY ON-DEVICE AI · TAP TO REPORT" caption and the reading cut to about four lines.
+  The astrology menu therefore shows the whole reading under TODAY'S HOROSCOPE, with "Written by
+  on-device AI · tap REPORT THIS READING to report", until SundialKit's fallback card keeps the
+  caption and fits the reading.
 - **Midnight** (not in the Android app, which looks again only on resume). The app keeps the
   screen on, and every AI reading shown must stay reportable, so at a new day, a new time zone or
   a clock change it takes down yesterday's reading and writes the new day's.
-- **No QUIT** (iOS apps do not quit), and the WALLPAPER switches become a note on adding widgets.
+- **No QUIT** (iOS apps do not quit), and the WALLPAPER switches become a note on adding widgets
+  (its Home Screen steps follow the system: Edit → Add Widget from iOS 18, the + button on 17).

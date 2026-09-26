@@ -125,6 +125,14 @@ struct AstrologyPanel: View {
             InstrumentAction(signTitle, "Choose zodiac sign") { model.showZodiacSignPicker() }
 
             InstrumentControls.section("TODAY'S HOROSCOPE")
+            if let reading = model.readingText {
+                // The reading in full, with its AI disclosure: on short screens the instrument's
+                // card falls back to one card without them and cuts the reading short.
+                InstrumentControls.label(reading, 13, 0xE6FF_FFFF)
+                    .padding(EdgeInsets(top: 2, leading: 4, bottom: 4, trailing: 4))
+                InstrumentControls.label("Written by on-device AI · tap REPORT THIS READING to report", 11, 0x99FF_FFFF)
+                    .padding(EdgeInsets(top: 0, leading: 4, bottom: 6, trailing: 4))
+            }
             InstrumentAction("WRITE A NEW READING", "Write today's private horoscope with Apple Intelligence",
                              enabled: model.zodiacProfile.isComplete) {
                 model.generateHoroscope(automatic: false)

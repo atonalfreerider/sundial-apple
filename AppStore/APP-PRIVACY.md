@@ -25,8 +25,9 @@ Apple apps before submitting; see `docs/RELEASE.md`).
 
 Each target ships `PrivacyInfo.xcprivacy`: no tracking, no tracking domains, the collected data
 type above (not linked, not tracking, App Functionality), and the required-reason APIs:
-`NSPrivacyAccessedAPICategoryUserDefaults` (CA92.1; 1C8F.1 for the App Group shared with the
-widgets and watch app) and `NSPrivacyAccessedAPICategorySystemBootTime` (35F9.1: the
+`NSPrivacyAccessedAPICategoryUserDefaults` (CA92.1; 1C8F.1 for the App Group: on the iPhone or
+iPad it is shared by the app and its widgets, and separately, on the watch, by the watch app and
+its complications) and `NSPrivacyAccessedAPICategorySystemBootTime` (35F9.1: the
 instrument's animation clock uses `ProcessInfo.systemUptime`).
 
 ## Age rating

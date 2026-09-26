@@ -77,10 +77,10 @@ personal team (the command-line builds below turn signing off altogether).
 - **The watch app** is embedded in the iPhone app, so installing `Sundial` on an iPhone offers it
   to the paired watch; running `SundialWatch` installs it directly (the first install on a real
   watch can take several minutes).
-- **Widgets:** long-press the Home Screen → Edit → Add Widget → Sundial; Lock Screen: long-press
-  the Lock Screen → Customize → Lock Screen → the widget area. The widget schemes ask which app to
-  launch; choose the Home Screen (or the watch face) and add the widget there. SwiftUI previews
-  in the widget files are quicker for layout.
+- **Widgets:** long-press the Home Screen → Edit → Add Widget (iOS 17: the + button) → Sundial;
+  Lock Screen: long-press the Lock Screen → Customize → Lock Screen → the widget area. The widget
+  schemes ask which app to launch; choose the Home Screen (or the watch face) and add the widget
+  there. SwiftUI previews in the widget files are quicker for layout.
 - **Complications:** on the watch (or simulator), long-press the face → Edit → Complications →
   Sundial.
 - **Calendars:** the simulator's Calendar app starts empty; add a few events there first. The

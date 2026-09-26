@@ -66,7 +66,9 @@ it by hand once makes the capabilities explicit and avoids surprises on a new Ma
 
 **App Group.** Identifiers → + → App Groups → Description `Sundial`, Identifier
 `group.com.metavirtuoso.sundial`. The app, its widgets, the watch app and its complications all
-read and write their settings there (`UserDefaults(suiteName:)`).
+read and write their settings there (`UserDefaults(suiteName:)`): the app and its widgets in the
+iPhone's or iPad's container, the watch app and its complications in the watch's own (the two are
+not synced).
 
 **App IDs.** Identifiers → + → App IDs → App, one explicit bundle id each:
 
@@ -279,7 +281,7 @@ submitted. Add this section after "The Sundial watch face" (from
 ```html
 <h2>Sundial for iPhone, iPad and Apple Watch</h2>
 
-<p>Sundial for Apple devices (bundle identifier <code>com.metavirtuoso.sundial</code>, with its widgets and Apple Watch app) works as described above, with these differences. Calendar events are read through Apple&rsquo;s EventKit, only after you allow calendar access, and never leave your device. Daily horoscopes are written on your device by Apple&rsquo;s Foundation Models (Apple Intelligence), where available; your birth details and the reading are processed on the device and are not sent to us or to Apple by Sundial. The Apple apps contain no Google ML Kit and no other third-party code that collects data. Settings are shared between the app, its widgets and the Apple Watch app on your devices, and may be included in your iCloud or device backups. The only information that leaves your device is a reading you choose to report, as described above.</p>
+<p>Sundial for Apple devices (bundle identifier <code>com.metavirtuoso.sundial</code>, with its widgets and Apple Watch app) works as described above, with these differences. Calendar events are read through Apple&rsquo;s EventKit, only after you allow calendar access, and never leave your device. Daily horoscopes are written on your device by Apple&rsquo;s Foundation Models (Apple Intelligence), where available; your birth details and the reading are processed on the device and are not sent to us or to Apple by Sundial. The Apple apps contain no Google ML Kit and no other third-party code that collects data. Settings are shared between the iPhone or iPad app and its widgets, and separately between the Apple Watch app and its complications; they are not synced between your iPhone and your Apple Watch, and may be included in your iCloud or device backups. The only information that leaves your device is a reading you choose to report, as described above.</p>
 ```
 
 Also change the introduction's "Android package <code>com.metavirtuoso.sundial</code>" to cover

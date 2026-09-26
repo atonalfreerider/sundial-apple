@@ -1,13 +1,17 @@
 // The Home Screen widgets: the instrument as Android's celestial wallpaper drew it
 // (DailyWallpaper.kt → SundialView.renderWallpaperBitmap: frozen at one moment, without the app's
-// chrome, in the saved aesthetic and astrology mode, with today's reading when there is one).
-// Android drew the Sun-centred view to the Home wallpaper once a day and the Earth view to the
-// Lock wallpaper every 15 minutes; here both are widgets (Sundial, and Sundial Earth View) on the
-// Lock wallpaper's cadence, with an entry every quarter hour for the next three hours.
+// chrome, in the saved aesthetic and astrology mode). Android drew the Sun-centred view to the
+// Home wallpaper once a day and the Earth view to the Lock wallpaper every 15 minutes; here both
+// are widgets (Sundial, and Sundial Earth View) on the Lock wallpaper's cadence, with an entry
+// every quarter hour for the next three hours. The wallpaper also showed today's reading where it
+// had room; the widgets leave it out for now (InstrumentWidgetRenderer.showsReading).
 //
 // Widget extensions have little memory (iOS stops one at about 30 MB), so each entry is drawn when
-// WidgetKit asks for its view, at no more than 2 pixels per point, by one Instrument at a time
-// (it uses the half-size Earth texture and is let go after every image).
+// WidgetKit asks for its view, by one Instrument at a time, which uses the half-size Earth texture
+// and is let go after every image: the Sun-centred view at no more than 2 pixels per point, the
+// Earth view at 1 (InstrumentWidgetRenderer.scale). SundialKit's sweep-gradient rings and the
+// CGImages made from them are cached process-wide and outlive each Instrument, and the Earth
+// view's rings, drawn under its zoomed camera, are the largest of them.
 
 import SundialRender
 import SwiftUI
@@ -22,7 +26,8 @@ struct InstrumentEntry: TimelineEntry {
     let zone: TimeZone
     let style: CelestialStyle
     let zodiac: ZodiacProfile
-    /// Today's reading (astrology only), for the widgets with room for it beside the dial.
+    /// Today's reading (astrology only). Not drawn while InstrumentWidgetRenderer.showsReading
+    /// is off; kept so the widgets can show it again once SundialKit can caption it for them.
     let horoscope: String?
 
     init(date: Date, zone: TimeZone, style: CelestialStyle, zodiac: ZodiacProfile, horoscope: String?) {
@@ -94,21 +99,23 @@ struct InstrumentWidgetView: View {
     @Environment(\.displayScale) var displayScale
 
     var body: some View {
-        // At most 2 pixels per point: the full-scale bitmap and the instrument's caches for it
-        // would not fit in the extension's memory on a 3× iPhone.
-        let renderScale = min(displayScale, InstrumentWidgetRenderer.maximumScale)
+        // Fewer pixels than the screen's: see InstrumentWidgetRenderer.scale.
+        let renderScale = InstrumentWidgetRenderer.scale(for: state, displayScale: displayScale)
         GeometryReader { geometry in
             if let image = InstrumentWidgetRenderer.render(entry, size: geometry.size, scale: renderScale,
                                                            state: state) {
                 Image(decorative: image, scale: renderScale, orientation: .up)
                     .resizable()
+                    .instrumentAccentedRendering()
                     .frame(width: geometry.size.width, height: geometry.size.height)
             } else {
+                // Only if the image could not be made (a flat tint on a tinted Home Screen).
                 WidgetLook.color(entry.style.baseColor)
             }
         }
-        // The sky's base colour behind the image; the system removes it where it draws widgets
-        // without their backgrounds (StandBy, tinted Home Screens), and the image keeps its own sky.
+        // The sky's base colour behind the image. The system removes it where it draws widgets
+        // without their backgrounds (StandBy, tinted and clear Home Screens); the image keeps its
+        // own sky there because it is drawn in full colour (instrumentAccentedRendering).
         .containerBackground(for: .widget) { WidgetLook.color(entry.style.baseColor) }
         .widgetURL(state == .geocentric ? SundialDeepLink.earth : SundialDeepLink.solar)
         .accessibilityElement(children: .ignore)
@@ -116,16 +123,53 @@ struct InstrumentWidgetView: View {
     }
 }
 
+private extension Image {
+    /// On a tinted or clear Home Screen (iOS 18+ accented rendering), draw the instrument in its
+    /// own colours. Without this, WidgetKit tints the opaque bitmap by its alpha and the widget
+    /// becomes a flat rectangle.
+    func instrumentAccentedRendering() -> Image {
+        if #available(iOS 18.0, *) {
+            return widgetAccentedRenderingMode(.fullColor)
+        }
+        return self
+    }
+}
+
 // MARK: - Rendering
 
 /// Draws the entries with Apps/Shared's InstrumentImage, one image at a time (under [lock]), for
 /// both widget kinds and every family. Each image gets a fresh Instrument, updated to the entry's
-/// settings, which is let go before the next one starts: its Earth renderer (the sphere samples
-/// and cached frames) is the largest part of the widget's memory, so it does not stay between
-/// entries. The Earth texture stays decoded in SundialResources' cache.
+/// settings, which is let go before the next one starts, so its Earth renderer (the sphere samples
+/// and cached frames) does not stay between entries. The Earth texture stays decoded in
+/// SundialResources' cache. SundialKit's own caches are process-wide and outlive every Instrument:
+/// the last six sweep-gradient rings (SweepGradientImages, a square image per ring) and a CGImage
+/// copy of each image still alive (CGCanvas's CGImageCache). The app cannot empty them, so the
+/// images are kept small instead (scale(for:displayScale:)).
 enum InstrumentWidgetRenderer {
     /// The most pixels per point a widget is drawn at (a 3× screen scales the image up).
     static let maximumScale: CGFloat = 2
+
+    /// The pixels per point the Earth view is drawn at. Its camera zooms in 2.22×, so its band and
+    /// bezel rings are rendered (as full squares) far larger than the widget: at 2× a large widget's
+    /// band alone is 1488 px square (8.9 MB, twice that with its CGImage), and with Brass Watch's
+    /// bezel and on the iPad the cache passes the extension's limit. At 1× the band is about 744 px
+    /// (2.2 MB) and the bitmap a quarter of the size, for a softer image.
+    static let earthViewScale: CGFloat = 1
+
+    /// Whether the widgets draw today's reading. SundialKit's wallpaper path titles the reading's
+    /// second card "CONTINUED · CELESTIAL WALLPAPER" (Instrument.drawHoroscopeCard with
+    /// forWallpaper), with no word that on-device AI wrote it; iOS has no Sundial wallpaper, and a
+    /// widget cannot report the reading. So it stays out until SundialKit lets the host set that
+    /// title (to "WRITTEN BY ON-DEVICE AI · OPEN SUNDIAL TO REPORT").
+    static let showsReading = false
+
+    /// Pixels per point for the widget drawing [state] on a [displayScale] screen: at most
+    /// [maximumScale] (the full-scale bitmap and the instrument's caches for it would not fit in
+    /// the extension's memory on a 3× iPhone), and [earthViewScale] for the Earth view.
+    static func scale(for state: Instrument.ViewState, displayScale: CGFloat) -> CGFloat {
+        let screen = max(displayScale, 1)
+        return min(screen, state == .geocentric ? earthViewScale : maximumScale)
+    }
 
     private static let lock = NSLock()
 
@@ -151,14 +195,15 @@ enum InstrumentWidgetRenderer {
         instrument.zone = entry.zone
         instrument.setBackgroundStyle(entry.style)
         instrument.setSouthernHemisphere(false)
-        instrument.setZodiacProfile(entry.zodiac, horoscope: horoscopeFits(size) ? entry.horoscope : nil)
+        instrument.setZodiacProfile(entry.zodiac,
+                                    horoscope: showsReading && horoscopeFits(size) ? entry.horoscope : nil)
         return InstrumentImage.wallpaper(instrument, size: size, scale: scale, instant: entry.date, state: state)
     }
 
     /// Whether drawHoroscopeCard (Instrument+Chrome) can lay the reading beside the dial or above
     /// and below it at this size (in points, on the phone layout's geometry), rather than over the
     /// dial. On the wallpaper it always had a phone screen's room; among the widgets only the
-    /// iPad's extra large one has room beside the dial, so the smaller ones leave the reading out.
+    /// iPad's extra large one has room beside the dial. Used once [showsReading] is on again.
     static func horoscopeFits(_ size: CGSize) -> Bool {
         let width = Double(size.width)
         let height = Double(size.height)
