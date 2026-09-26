@@ -1,0 +1,357 @@
+# Apple CI for Sundial: tests SundialKit, builds the iOS and watchOS apps from the committed
+# Apps/Sundial.xcodeproj (generated from Apps/project.yml by XcodeGen), and captures the App Store
+# screenshots in the simulator: the SundialUITests target on an iPhone 17 Pro Max and an iPad Pro
+# 13-inch, and the watch app on an Apple Watch Ultra. They are uploaded as the
+# `app-store-screenshots` artifact and replace AppStore/screenshots-draft/. Nothing is signed.
+name: Apple
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: apple-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # bash -eo pipefail, so an xcodebuild failure fails its step through the xcbeautify pipe.
+    # (The runner's bash is 3.2: no ${x^^}, associative arrays or mapfile.)
+    shell: bash
+
+env:
+  PROJECT: Apps/Sundial.xcodeproj
+  DERIVED_DATA: build/DerivedData
+  # Pinned to the xcode-27 image's default Xcode, whose iOS and watchOS simulator runtimes come
+  # preinstalled (a newer Xcode on the image, often a beta, would download its runtimes on every
+  # run). Empty selects the image's default Xcode (/Applications/Xcode.app) too.
+  XCODE_VERSION: "27.0"
+  MINIMUM_XCODE_MAJOR: "27"
+  WATCH_BUNDLE_ID: com.metavirtuoso.sundial.watchkitapp
+  # The moment every store screenshot shows: Friday 25 September 2026, 20:30 in Los Angeles.
+  # (Apps/SundialUITests/ScreenshotTests.swift holds the same values for the iOS app.)
+  SCREENSHOT_INSTANT: "2026-09-26T03:30:00Z"
+  SCREENSHOT_ZONE: America/Los_Angeles
+
+jobs:
+  apple:
+    name: SundialKit, apps and App Store screenshots
+    # The newest macOS image, the only one with Xcode 27 (macos-latest still carries Xcode 26).
+    runs-on: xcode-27
+    timeout-minutes: 150
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Select the pinned Xcode (the image's default)
+        run: |
+          python3 - > "$RUNNER_TEMP/xcode-path" <<'PY'
+          import glob, os, plistlib, re, sys
+
+          wanted = os.environ.get("XCODE_VERSION", "").strip()
+          if not wanted:
+              # The image's default Xcode, the one its simulator runtimes are installed for.
+              print(os.path.realpath("/Applications/Xcode.app"))
+              sys.exit(0)
+          found = {}
+          for path in glob.glob("/Applications/Xcode*.app"):
+              real = os.path.realpath(path)  # Xcode.app and the version aliases are symlinks
+              try:
+                  with open(os.path.join(real, "Contents", "Info.plist"), "rb") as f:
+                      found[real] = plistlib.load(f)["CFBundleShortVersionString"]
+              except Exception:
+                  continue
+
+          def order(item):
+              real, version = item
+              return ([int(n) for n in re.findall(r"\d+", version)], "beta" not in real.lower())
+
+          candidates = sorted(found.items(), key=order)
+          for real, version in candidates:
+              print(f"Xcode {version}: {real}", file=sys.stderr)
+          candidates = [c for c in candidates if c[1] == wanted or c[1].startswith(wanted + ".")]
+          if not candidates:
+              sys.exit(f"No Xcode found matching {wanted}")
+          print(candidates[-1][0])
+          PY
+          xcode=$(cat "$RUNNER_TEMP/xcode-path")
+          sudo xcode-select --switch "$xcode/Contents/Developer"
+          sudo xcodebuild -runFirstLaunch
+          xcode-select --print-path
+          xcodebuild -version
+          swift --version
+          major=$(xcodebuild -version | sed -n 's/^Xcode \([0-9][0-9]*\).*/\1/p')
+          if [ -z "$major" ] || [ "$major" -lt "$MINIMUM_XCODE_MAJOR" ]; then
+            echo "::error::Sundial needs Xcode $MINIMUM_XCODE_MAJOR or newer; the selected one is $(xcodebuild -version | head -1)"
+            exit 1
+          fi
+          command -v xcbeautify >/dev/null || brew install xcbeautify
+
+      - name: Install the simulator platforms the selected Xcode needs
+        run: |
+          # A newer Xcode on the image may come without its own simulator runtimes.
+          for pair in iOS:iphonesimulator watchOS:watchsimulator; do
+            platform=${pair%%:*}
+            sdk=${pair#*:}
+            version=$(xcrun --sdk "$sdk" --show-sdk-version)
+            if xcrun simctl list runtimes available -j | python3 -c '
+          import json, sys
+          platform, version = sys.argv[1], sys.argv[2]
+          runtimes = json.load(sys.stdin)["runtimes"]
+          sys.exit(0 if any(
+              (r.get("platform") or r["name"].split()[0]) == platform
+              and (r["version"] == version or r["version"].startswith(version + "."))
+              for r in runtimes) else 1)
+          ' "$platform" "$version"; then
+              echo "$platform $version simulator runtime: installed"
+            else
+              echo "$platform $version simulator runtime: downloading"
+              xcodebuild -downloadPlatform "$platform"
+            fi
+          done
+          xcrun simctl list runtimes
+
+      - name: Test SundialKit
+        run: swift test
+
+      - name: Check the Xcode project
+        run: |
+          if [ ! -d "$PROJECT" ]; then
+            echo "::error::$PROJECT is not committed: run 'xcodegen generate' in Apps/ and commit the project"
+            exit 1
+          fi
+          xcodebuild -list -project "$PROJECT"
+
+      - name: Build the iOS app (iOS Simulator)
+        run: |
+          xcodebuild build -project "$PROJECT" -scheme Sundial -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify --renderer github-actions
+
+      - name: Build the watch app (watchOS Simulator)
+        run: |
+          xcodebuild build -project "$PROJECT" -scheme SundialWatch -configuration Debug \
+            -destination 'generic/platform=watchOS Simulator' -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify --renderer github-actions
+
+      - name: Build the screenshot UI tests
+        run: |
+          # Release, so the globe renders at full speed; built once, run on both devices.
+          xcodebuild build-for-testing -project "$PROJECT" -scheme Sundial -configuration Release \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify --renderer github-actions
+          xctestrun=$(find "$DERIVED_DATA/Build/Products" -maxdepth 1 -name 'Sundial_*iphonesimulator*.xctestrun' | head -1)
+          if [ -z "$xctestrun" ]; then
+            echo "::error::No .xctestrun for the Sundial scheme: its test action must include SundialUITests"
+            exit 1
+          fi
+          echo "XCTESTRUN=$xctestrun" >> "$GITHUB_ENV"
+
+      - name: Create the store simulators
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess, sys
+
+          def simctl(*args):
+              return subprocess.run(["xcrun", "simctl", *args], check=True, capture_output=True, text=True).stdout
+
+          def numbers(text):
+              return [int(n) for n in re.findall(r"\d+", text)]
+
+          runtimes = json.loads(simctl("list", "runtimes", "available", "-j"))["runtimes"]
+          device_types = json.loads(simctl("list", "devicetypes", "-j"))["devicetypes"]
+          failed = False
+
+          def create(variable, platform, preferred, pattern, required):
+              """A fresh simulator of [preferred] (else the newest name matching [pattern]) on the
+              newest [platform] runtime; its UDID goes to $GITHUB_ENV as [variable]."""
+              global failed
+              matching = [r for r in runtimes if (r.get("platform") or r["name"].split()[0]) == platform]
+              runtime = max(matching, key=lambda r: numbers(r["version"])) if matching else None
+              supported = (runtime.get("supportedDeviceTypes") or device_types) if runtime else []
+              names = sorted(t["name"] for t in supported)
+              name = preferred if preferred in names else next((n for n in reversed(names) if re.fullmatch(pattern, n)), None)
+              if runtime is None or name is None:
+                  level = "error" if required else "warning"
+                  print(f"::{level}::No {preferred} simulator available on {runtime['name'] if runtime else platform}")
+                  failed = failed or required
+                  return
+              identifier = next(t["identifier"] for t in supported if t["name"] == name)
+              udid = simctl("create", f"Sundial store {name}", identifier, runtime["identifier"]).strip()
+              print(f"{name}, {runtime['name']}: {udid}")
+              with open(os.environ["GITHUB_ENV"], "a") as env:
+                  env.write(f"{variable}={udid}\n")
+
+          create("IPHONE_UDID", "iOS", "iPhone 17 Pro Max", r"iPhone \d+ Pro Max", True)
+          create("IPAD_UDID", "iOS", "iPad Pro 13-inch (M5)", r"iPad Pro 13-inch.*", True)
+          # 422 × 514, the Apple Watch size App Store Connect lists first.
+          create("WATCH_UDID", "watchOS", "Apple Watch Ultra 3 (49mm)", r"Apple Watch Ultra.*", False)
+          sys.exit(1 if failed else 0)
+          PY
+
+      - name: Screenshots on iPhone and iPad
+        if: ${{ !cancelled() && env.XCTESTRUN != '' }}
+        run: |
+          mkdir -p build/screenshots
+          capture() { # capture NAME UDID
+            local name="$1" udid="$2" result=0
+            if [ -z "$udid" ]; then echo "::error::No $name simulator"; return 1; fi
+            xcrun simctl bootstatus "$udid" -b
+            xcrun simctl ui "$udid" appearance dark || true
+            # The store's customary full status bar, at the frozen moment's time.
+            xcrun simctl status_bar "$udid" override --time "8:30" --dataNetwork wifi --wifiMode active \
+              --wifiBars 3 --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100 || true
+            # Not in parallel: clones would lose the status bar and appearance set here.
+            xcodebuild test-without-building -xctestrun "$XCTESTRUN" -destination "id=$udid" \
+              -parallel-testing-enabled NO -only-testing:SundialUITests/ScreenshotTests \
+              -resultBundlePath "build/screenshots/$name.xcresult" \
+              | xcbeautify --renderer github-actions || result=$?
+            xcrun simctl shutdown "$udid" || true
+            return $result
+          }
+          status=0
+          capture iPhone "${IPHONE_UDID:-}" || status=1
+          capture iPad "${IPAD_UDID:-}" || status=1
+          exit $status
+
+      - name: Screenshots on Apple Watch
+        # The watch app honours the same -screenshotScene arguments; a missing watchOS runtime or a
+        # watch app that cannot launch standalone should not fail the build.
+        if: ${{ !cancelled() && env.WATCH_UDID != '' }}
+        continue-on-error: true
+        run: |
+          if [ -z "${WATCH_UDID:-}" ]; then
+            echo "::warning::No Apple Watch simulator: the watch screenshots stay drafts"
+            exit 0
+          fi
+          xcrun simctl bootstatus "$WATCH_UDID" -b
+          xcodebuild build -project "$PROJECT" -scheme SundialWatch -configuration Release \
+            -destination "id=$WATCH_UDID" -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify --renderer github-actions
+          app=""
+          for candidate in "$DERIVED_DATA"/Build/Products/Release-watchsimulator/*.app; do
+            id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$candidate/Info.plist" 2>/dev/null || true)
+            if [ "$id" = "$WATCH_BUNDLE_ID" ]; then app="$candidate"; fi
+          done
+          if [ -z "$app" ]; then
+            echo "::error::No $WATCH_BUNDLE_ID app in $DERIVED_DATA/Build/Products/Release-watchsimulator"
+            exit 1
+          fi
+          xcrun simctl install "$WATCH_UDID" "$app"
+          mkdir -p build/screenshots/watch
+          # The Wear OS listing's scenes (play/graphics/wear-1-… to wear-5-…). Only the first shows
+          # the clock: Apple Watch apps must not look like a watch face (App Review 4.2.4), so the
+          # listing shows the instrument, not a time display.
+          while read -r name scene clock; do
+            # (stdin from /dev/null: the loop reads the scene list from its own.)
+            xcrun simctl terminate "$WATCH_UDID" "$WATCH_BUNDLE_ID" </dev/null >/dev/null 2>&1 || true
+            SIMCTL_CHILD_TZ="$SCREENSHOT_ZONE" xcrun simctl launch "$WATCH_UDID" "$WATCH_BUNDLE_ID" \
+              -screenshotScene "$scene" -screenshotInstant "$SCREENSHOT_INSTANT" -screenshotZone "$SCREENSHOT_ZONE" \
+              -screenshotClock "$clock" -AppleLanguages "(en-US)" -AppleLocale en_US </dev/null
+            sleep 8
+            xcrun simctl io "$WATCH_UDID" screenshot --type=png --mask=ignored "build/screenshots/watch/$name.png" </dev/null
+          done <<'SCENES'
+          1-brass-astrology heliocentric-brass-astrology on
+          2-brass-earth-view geocentric-brass-astronomy off
+          3-solar-view heliocentric-crimson-astronomy off
+          4-earth-view geocentric-blue-astronomy off
+          5-galactic galactic-violet-astronomy off
+          SCENES
+          xcrun simctl shutdown "$WATCH_UDID" || true
+
+      - name: Export the screenshots
+        if: ${{ !cancelled() }}
+        run: |
+          python3 - <<'PY'
+          import glob, json, os, re, shutil, struct, subprocess
+
+          store = "build/screenshots/AppStore"
+          os.makedirs(store, exist_ok=True)
+
+          def attachments(node):
+              """Every exported attachment in xcresulttool's manifest.json, however it nests them."""
+              if isinstance(node, dict):
+                  if "exportedFileName" in node:
+                      yield node
+                  for value in node.values():
+                      yield from attachments(value)
+              elif isinstance(node, list):
+                  for value in node:
+                      yield from attachments(value)
+
+          def png_size(path):
+              with open(path, "rb") as f:
+                  header = f.read(24)
+              return struct.unpack(">II", header[16:24]) if header[:8] == b"\x89PNG\r\n\x1a\n" else (0, 0)
+
+          # iPhone and iPad: the attachments ScreenshotTests named "iPhone-6.9-1-solar-view" etc.
+          for bundle in sorted(glob.glob("build/screenshots/*.xcresult")):
+              device = os.path.splitext(os.path.basename(bundle))[0]
+              export = f"build/screenshots/export/{device}"
+              os.makedirs(export, exist_ok=True)
+              subprocess.run(["xcrun", "xcresulttool", "export", "attachments",
+                              "--path", bundle, "--output-path", export], check=True)
+              manifest = os.path.join(export, "manifest.json")
+              if not os.path.exists(manifest):
+                  print(f"::warning::{bundle}: no manifest.json in the export")
+                  continue
+              with open(manifest) as f:
+                  entries = list(attachments(json.load(f)))
+              for entry in entries:
+                  if entry.get("isAssociatedWithFailure"):
+                      continue
+                  name = entry.get("suggestedHumanReadableName") or entry["exportedFileName"]
+                  name = re.sub(r"\.(png|jpe?g|heic)$", "", name, flags=re.I)  # not the "." of "6.9"
+                  # xcresulttool suggests "<name>_<index>_<UUID>"; keep "<name>".
+                  name = re.sub(r"(_\d+)?_[0-9A-Fa-f]{8}(-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$", "", name)
+                  if not name.startswith(("iPhone-", "iPad-")):
+                      continue
+                  shutil.copyfile(os.path.join(export, entry["exportedFileName"]), os.path.join(store, name + ".png"))
+
+          # Apple Watch: 422 × 514 is the Ultra size App Store Connect lists; name others by size.
+          for shot in sorted(glob.glob("build/screenshots/watch/*.png")):
+              width, height = png_size(shot)
+              prefix = "Watch-Ultra" if (width, height) == (422, 514) else f"Watch-{width}x{height}"
+              shutil.copyfile(shot, os.path.join(store, f"{prefix}-{os.path.basename(shot)}"))
+
+          lines = ["### App Store screenshots", "", "| File | Size |", "|---|---|"]
+          for shot in sorted(glob.glob(os.path.join(store, "*.png"))):
+              width, height = png_size(shot)
+              lines.append(f"| {os.path.basename(shot)} | {width} × {height} |")
+          if len(lines) == 4:
+              lines.append("| (none) | |")
+          print("\n".join(lines))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("\n".join(lines) + "\n")
+          PY
+
+      - name: Upload the App Store screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-store-screenshots
+          path: build/screenshots/AppStore
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload the raw screenshot attachments
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshot-attachments
+          path: build/screenshots/export
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload the UI test result bundles
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshot-results
+          path: build/screenshots/*.xcresult
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,0 +1,298 @@
+# XcodeGen spec for the Sundial Apple apps. Generate the project with
+#
+#   xcodegen generate --spec Apps/project.yml      (from the repository root)
+#
+# which writes Apps/Sundial.xcodeproj plus each target's Info.plist and .entitlements under
+# Apps/Resources/<Target>/ (edit them here, not there: they are rewritten on every generation).
+# Regenerate after adding, removing or renaming a file. See Apps/README.md and docs/APPS.md.
+#
+#   Sundial              iOS 17+ app, iPhone and iPad        com.metavirtuoso.sundial
+#   SundialWidgets       iOS WidgetKit extension             com.metavirtuoso.sundial.widgets
+#   SundialWatch         watchOS 10+ app (single target)     com.metavirtuoso.sundial.watchkitapp
+#   SundialWatchWidgets  watchOS WidgetKit extension         com.metavirtuoso.sundial.watchkitapp.widgets
+#   SundialUITests       iOS UI tests (store screenshots)    com.metavirtuoso.sundial.uitests (not shipped)
+#
+# Signing: automatic. DEVELOPMENT_TEAM is deliberately empty; the owner fills in the ten-character
+# Team ID from developer.apple.com → Membership (below, under settings.base) and regenerates, or
+# picks the team under Signing & Capabilities for each target (lost on the next generation).
+
+name: Sundial
+
+options:
+  minimumXcodeGenVersion: 2.46.0
+  xcodeVersion: "27.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  groupSortPosition: top
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+
+packages:
+  # SundialKit, the Swift package at the repository root (Package.swift).
+  SundialKit:
+    path: ..
+
+settings:
+  base:
+    MARKETING_VERSION: "3.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    VERSIONING_SYSTEM: apple-generic
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""                    # the owner's Team ID goes here
+    GENERATE_INFOPLIST_FILE: "NO"           # XcodeGen writes each Info.plist from `info` below
+    ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    ENABLE_PREVIEWS: "YES"
+    ENABLE_USER_SCRIPT_SANDBOXING: "YES"
+    DEAD_CODE_STRIPPING: "YES"
+    SWIFT_EMIT_LOC_STRINGS: "YES"
+    LOCALIZATION_PREFERS_STRING_CATALOGS: "YES"
+
+# The resources every drawing target bundles: the Sundial Condensed face (the Android app's
+# sundial_condensed.ttf, an Archivo instance under the SIL Open Font License 1.1, registered at
+# launch and listed in UIAppFonts) with its licence, the Earth texture and the asset catalog
+# (AppIcon for iOS and watchOS, AccentColor = Android's brass panel accent, LaunchBackground,
+# WidgetBackground).
+#
+# Shared/ is compiled whole into the two apps (InstrumentApp). The widget extensions take only the
+# resource loading and the bitmap renderer (WidgetExtension): the interactive InstrumentView (with
+# its Digital Crown, focus and haptics) and InstrumentModel have no place in an extension.
+targetTemplates:
+  DrawingTarget:
+    sources:
+      - path: ${target_name}
+        excludes: ["**/*.md"]
+      - path: Resources/Assets.xcassets
+      - path: Resources/sundial_condensed.ttf
+      - path: Resources/sundial-condensed-OFL.txt
+        buildPhase: resources
+      - path: Resources/earth_texture.png
+      # Info.plist and the entitlements (no build phase) and PrivacyInfo.xcprivacy (a resource).
+      - path: Resources/${target_name}
+    dependencies:
+      - package: SundialKit
+        products:
+          - SundialCore
+          - SundialRender
+          - SundialCoreGraphics
+    entitlements:
+      path: Resources/${target_name}/${target_name}.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.metavirtuoso.sundial
+
+  InstrumentApp:
+    type: application
+    sources:
+      - path: Shared
+        excludes: ["**/*.md"]
+
+  WidgetExtension:
+    type: app-extension
+    sources:
+      - path: Shared/SundialResources.swift
+      - path: Shared/InstrumentImage.swift
+    settings:
+      base:
+        SKIP_INSTALL: "YES"
+        APPLICATION_EXTENSION_API_ONLY: "YES"
+        ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME: WidgetBackground
+
+targets:
+  Sundial:
+    templates: [DrawingTarget, InstrumentApp]
+    platform: iOS
+    deploymentTarget: "17.0"
+    dependencies:
+      - target: SundialWidgets          # → Embed Foundation Extensions (PlugIns)
+      - target: SundialWatch            # → Embed Watch Content (Watch)
+      # Horoscopes use Apple's Foundation Models (iOS 26) behind `#if canImport` and
+      # `if #available`; weak linking keeps the app launching on iOS 17 to 25.
+      - sdk: FoundationModels.framework
+        weak: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.metavirtuoso.sundial
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: "NO"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_IDENTITY: Apple Development   # replaces XcodeGen's legacy "iPhone Developer" preset
+    info:
+      path: Resources/Sundial/Info.plist
+      properties:
+        CFBundleDisplayName: Sundial
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UIAppFonts:
+          - sundial_condensed.ttf
+        # sundial://view/heliocentric and sundial://view/geocentric, the widgets' links
+        # (SundialDeepLink), handled by AppModel.openURL.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.metavirtuoso.sundial
+            CFBundleURLSchemes:
+              - sundial
+        NSCalendarsFullAccessUsageDescription: >-
+          Sundial shows the events of the calendars you choose on its dials: long events around
+          the year and today's events around the day. Events are only read, never changed, and
+          never leave your device.
+        NSCalendarsUsageDescription: >-
+          Sundial shows the events of the calendars you choose on its dials: long events around
+          the year and today's events around the day. Events are only read, never changed, and
+          never leave your device.
+        # Black, like Android's window background, until the instrument draws.
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        # Full screen like the Android app (immersive): no status bar anywhere in the app.
+        UIStatusBarHidden: true
+        UIViewControllerBasedStatusBarAppearance: false
+        UIUserInterfaceStyle: Dark
+        UIRequiresFullScreen: false
+        UIApplicationSupportsIndirectInputEvents: true
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        # Portrait on iPhone, as Android locks the phone to portrait; every orientation on iPad,
+        # which Split View and Stage Manager require.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+
+  SundialWidgets:
+    templates: [DrawingTarget, WidgetExtension]
+    platform: iOS
+    deploymentTarget: "17.0"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.metavirtuoso.sundial.widgets
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: Resources/SundialWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Sundial
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UIAppFonts:
+          - sundial_condensed.ttf
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  SundialWatch:
+    templates: [DrawingTarget, InstrumentApp]
+    platform: watchOS
+    deploymentTarget: "10.0"
+    dependencies:
+      - target: SundialWatchWidgets     # → Embed Foundation Extensions (PlugIns)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.metavirtuoso.sundial.watchkitapp
+        TARGETED_DEVICE_FAMILY: "4"
+        SKIP_INSTALL: "YES"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        LD_RUNPATH_SEARCH_PATHS: ["$(inherited)", "@executable_path/Frameworks"]
+    info:
+      path: Resources/SundialWatch/Info.plist
+      properties:
+        CFBundleDisplayName: Sundial
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        ITSAppUsesNonExemptEncryption: false
+        UIAppFonts:
+          - sundial_condensed.ttf
+        # A single-target watchOS app that ships inside the iOS app and also runs (and installs)
+        # without it, like the standalone Wear OS app.
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.metavirtuoso.sundial
+        WKRunsIndependentlyOfCompanionApp: true
+        WKSupportsAlwaysOnDisplay: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+
+  SundialWatchWidgets:
+    templates: [DrawingTarget, WidgetExtension]
+    platform: watchOS
+    deploymentTarget: "10.0"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.metavirtuoso.sundial.watchkitapp.widgets
+        TARGETED_DEVICE_FAMILY: "4"
+    info:
+      path: Resources/SundialWatchWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Sundial
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UIAppFonts:
+          - sundial_condensed.ttf
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  # App Store screenshots of the iPhone and iPad app (ScreenshotTests), run in the simulator by
+  # CI; not shipped. It drives Sundial in its screenshot mode (see the test's header).
+  SundialUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: SundialUITests
+        excludes: ["**/*.md"]
+    dependencies:
+      - target: Sundial
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.metavirtuoso.sundial.uitests
+        TEST_TARGET_NAME: Sundial
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: "YES"
+
+schemes:
+  # Builds, runs and archives the iOS app with its widgets and the embedded watch app. Test runs
+  # the screenshot UI tests:
+  #   xcodebuild test -scheme Sundial -only-testing:SundialUITests/ScreenshotTests …
+  Sundial:
+    build:
+      targets:
+        Sundial: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - SundialUITests
+    archive:
+      config: Release
+
+  # Runs the watch app on a watch simulator or a paired Apple Watch.
+  SundialWatch:
+    build:
+      targets:
+        SundialWatch: all
+    run:
+      config: Debug
+
+  # Widget debugging: Xcode asks which app to launch (choose the Home Screen, then add the widget).
+  SundialWidgets:
+    build:
+      targets:
+        SundialWidgets: all
+        Sundial: [run]
+    run:
+      config: Debug
+      executable: SundialWidgets
+      askForAppToLaunch: true
+
+  SundialWatchWidgets:
+    build:
+      targets:
+        SundialWatchWidgets: all
+        SundialWatch: [run]
+    run:
+      config: Debug
+      executable: SundialWatchWidgets
+      askForAppToLaunch: true

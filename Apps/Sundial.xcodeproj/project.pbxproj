@@ -1,0 +1,1190 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		022A2E9E8689BA95A3D922B5 /* sundial_condensed.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D1510B46E6A2B7B8151DF5C8 /* sundial_condensed.ttf */; };
+		0B6A3F016A2AB6A8621A0001 /* earth_texture.png in Resources */ = {isa = PBXBuildFile; fileRef = 44CB5E24C139D1AC70383F04 /* earth_texture.png */; };
+		12020853BBE2B334D7B88AE8 /* InstrumentModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124BE81163E7DB05AEEE3522 /* InstrumentModel.swift */; };
+		171C11C5EA1B9890E701C688 /* InstrumentImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 815838BE55533E7C5F222133 /* InstrumentImage.swift */; };
+		1EE1DB062D3C5E8D3A71549F /* FoundationModels.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83CB1EE26BF476EC066F9B71 /* FoundationModels.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
+		1F4C9C4AF998F3F45CA6ACA7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 67E1F74450DB04C43A83344C /* PrivacyInfo.xcprivacy */; };
+		22E0408DB479A529C739EF02 /* SundialRender in Frameworks */ = {isa = PBXBuildFile; productRef = 57FC58E4B0E0A66D859C70E3 /* SundialRender */; };
+		24D6A6821C87B68646B27385 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 65E6F3D469A2FDBA98DA4456 /* Assets.xcassets */; };
+		25571F3F91655C333051F310 /* SundialRender in Frameworks */ = {isa = PBXBuildFile; productRef = EBBFB2B5B31B3A134274608A /* SundialRender */; };
+		25BEA7AF3A4C683194C659A0 /* SundialResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6997F36E2306B64A5CEE4F9C /* SundialResources.swift */; };
+		2FADA98701B9CF939D181163 /* SundialWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E5F4A91B1F78A612DFFB786B /* SundialWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3676B5D6E891F1DEDC640476 /* ReportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76859C284D8EE284190B8715 /* ReportSheet.swift */; };
+		37DD3FF126868B4D26EBEA7E /* SundialCoreGraphics in Frameworks */ = {isa = PBXBuildFile; productRef = FD4BE5D5BC1335E6BF41ADFF /* SundialCoreGraphics */; };
+		3AFA56D429CD1F582F43FF3D /* TuckMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 519A3F048677C86D876C6C48 /* TuckMenu.swift */; };
+		3B7735A6D73DA31552E21A2D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 65E6F3D469A2FDBA98DA4456 /* Assets.xcassets */; };
+		3D8FFC65DF0F26CD5F0A8883 /* SundialWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = F6C96375ACC2A85F00954836 /* SundialWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3F9288CE909F0338EDDB0151 /* WatchComplications.swift in Sources */ = {isa = PBXBuildFile; fileRef = D510EA902F5AC617FC1F244D /* WatchComplications.swift */; };
+		42F7D549AE625BC37213BCCA /* earth_texture.png in Resources */ = {isa = PBXBuildFile; fileRef = 44CB5E24C139D1AC70383F04 /* earth_texture.png */; };
+		43269FA77A11F9670B7D20F5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 370829743638A789E362A450 /* PrivacyInfo.xcprivacy */; };
+		4ACF115DF22E254BEDF15233 /* AstrologyPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D75043E3C49343327CB84F /* AstrologyPanel.swift */; };
+		4D398E1FDF81F6BE1990AEB3 /* sundial_condensed.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D1510B46E6A2B7B8151DF5C8 /* sundial_condensed.ttf */; };
+		50A94C56FFCA397BE65D0205 /* CalendarPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 766B640502816E17BA41AFC6 /* CalendarPanel.swift */; };
+		52AFF77085EB0F89C2FDDDA8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 65E6F3D469A2FDBA98DA4456 /* Assets.xcassets */; };
+		5554090018AFF3C38BDC0434 /* CalendarStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7057AD1D6C94C745CB7FD8C5 /* CalendarStore.swift */; };
+		59677547ACAFD19520025D22 /* InstrumentImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 815838BE55533E7C5F222133 /* InstrumentImage.swift */; };
+		5D6BFC654068D47DB707B27D /* SundialResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6997F36E2306B64A5CEE4F9C /* SundialResources.swift */; };
+		5FB8AF742C41BBDAE4359152 /* SundialResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6997F36E2306B64A5CEE4F9C /* SundialResources.swift */; };
+		623ECD5F9A9EF35365E204AB /* SundialWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1CD871E7CF275FC69D2D7F46 /* SundialWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		6354B1E3988669DEAD302581 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6FA2F9E3D7E6BC28ECAD44F1 /* PrivacyInfo.xcprivacy */; };
+		644B3B36D77986E9468DF90E /* WatchSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 613CCF59DE37F6CFA9E79E88 /* WatchSettingsView.swift */; };
+		66EF59DECD1F42FD9454ACD8 /* InstrumentWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 254B232236F82BFADEF3E963 /* InstrumentWidget.swift */; };
+		696FEC236533CA0BEB6229A2 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 67C76BAFC8F08D1A7A18C3CE /* PrivacyInfo.xcprivacy */; };
+		745C550C7978E8CA007B1C61 /* sundial-condensed-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 5F1B8AAC12052191C2159507 /* sundial-condensed-OFL.txt */; };
+		77C648435B54B96C61E91213 /* SundialWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF23E405B62A25B7F75AA9B /* SundialWatchApp.swift */; };
+		798720215DAEE5D2F39F432B /* InstrumentImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 815838BE55533E7C5F222133 /* InstrumentImage.swift */; };
+		7A424B91899DC805CC6E767F /* ReadingReportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A46DB36D8B3C8419D607B8B7 /* ReadingReportService.swift */; };
+		8FFE5E925773D2E281219C9B /* ScreenshotScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BC00E1452A219A8D53C1B23 /* ScreenshotScene.swift */; };
+		956A309ABBF2E71D0C462DB9 /* sundial_condensed.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D1510B46E6A2B7B8151DF5C8 /* sundial_condensed.ttf */; };
+		957E8164EEB13BA2982BD926 /* sundial-condensed-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 5F1B8AAC12052191C2159507 /* sundial-condensed-OFL.txt */; };
+		9B043E4507C3522067AA71D8 /* InstrumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F88FD0B30EA9B9E2B0FE5ACB /* InstrumentView.swift */; };
+		9C2084433A6828C9E2EAA6FD /* InstrumentModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124BE81163E7DB05AEEE3522 /* InstrumentModel.swift */; };
+		9CF07C1ADDFD97BEA2E49656 /* InstrumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F88FD0B30EA9B9E2B0FE5ACB /* InstrumentView.swift */; };
+		9F4AD46FC904BDBB2D08BF2B /* SundialWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 558679A5E15732B9295C0930 /* SundialWidgets.swift */; };
+		AD383FD3BC3702DB71707B3D /* sundial_condensed.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D1510B46E6A2B7B8151DF5C8 /* sundial_condensed.ttf */; };
+		B23A4EDA7376D44A811ECF48 /* ScreenshotScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BC00E1452A219A8D53C1B23 /* ScreenshotScene.swift */; };
+		B48C06859F8176253603AB7A /* SundialResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6997F36E2306B64A5CEE4F9C /* SundialResources.swift */; };
+		B5A170B7AF5FBB242F3F32E5 /* WatchContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31730FE68857577E619E0A67 /* WatchContentView.swift */; };
+		B7F2A113FFA2CA8351CD873F /* SundialCoreGraphics in Frameworks */ = {isa = PBXBuildFile; productRef = 620CC2C790634C04E616D816 /* SundialCoreGraphics */; };
+		C04C978BB6774973DF0DFC14 /* SettingsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B048900FBE96C599DCCC27CD /* SettingsPanel.swift */; };
+		C50F50E9657124123CFD564A /* SundialRender in Frameworks */ = {isa = PBXBuildFile; productRef = 9CCCB763E6E18449060BA8F5 /* SundialRender */; };
+		C5348E6F8C53036459575BE9 /* SundialCore in Frameworks */ = {isa = PBXBuildFile; productRef = D7BD1255CD464EAA141571D8 /* SundialCore */; };
+		C877CD01DFBDA0DC09638EB7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 65E6F3D469A2FDBA98DA4456 /* Assets.xcassets */; };
+		CF2841F8D507EF26BF55140F /* LockScreenWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD9F7CCDAFC40D301083B71 /* LockScreenWidgets.swift */; };
+		D07F07BD152BFFB8EA2880F2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1EDA573CDBD522D622EF228 /* ContentView.swift */; };
+		D789B1C5AD03E1A84E7A2662 /* SundialRender in Frameworks */ = {isa = PBXBuildFile; productRef = 610F203C88E2E799A8C330A9 /* SundialRender */; };
+		D9A4512B626D4662E89F0FD5 /* InstrumentImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 815838BE55533E7C5F222133 /* InstrumentImage.swift */; };
+		D9C2A237482A7648E82EC010 /* sundial-condensed-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 5F1B8AAC12052191C2159507 /* sundial-condensed-OFL.txt */; };
+		E34132ABE3609979E76D0193 /* earth_texture.png in Resources */ = {isa = PBXBuildFile; fileRef = 44CB5E24C139D1AC70383F04 /* earth_texture.png */; };
+		E8EF4A84B6C6FC3D1D6CCD00 /* SundialCoreGraphics in Frameworks */ = {isa = PBXBuildFile; productRef = 6432434C3ED6D74F0BC35294 /* SundialCoreGraphics */; };
+		E9D8A76B6E5F4DC6A76DEBB1 /* SundialCore in Frameworks */ = {isa = PBXBuildFile; productRef = 89018D5FC7725FDAF5EEDB43 /* SundialCore */; };
+		ED1261BD34EF58B274B511C6 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08D1538E493CCB9EE58AAF76 /* AppModel.swift */; };
+		EE028065BD437BFDFA802CC7 /* SundialCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1CFE8AD159635400DA9583E4 /* SundialCore */; };
+		EE61FCFA61164226276FF1C4 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCAC47385DFE4CCF6824F6C2 /* ScreenshotTests.swift */; };
+		F0B9BDF046BE3929A32DC395 /* SundialCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0A6C143E345669EE3CB2BEBB /* SundialCore */; };
+		F21D36E72B6A37DA98174DC0 /* sundial-condensed-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 5F1B8AAC12052191C2159507 /* sundial-condensed-OFL.txt */; };
+		F75B6F09C72DADD1DA2CDFAD /* SundialApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5889B2F9C9B4CA6D29D85A97 /* SundialApp.swift */; };
+		F7808455C5C3DD3277A08490 /* InstrumentControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D738C8B10A4237F9CF231D2 /* InstrumentControls.swift */; };
+		F9510D749CEB9EE0C9F8D4C5 /* earth_texture.png in Resources */ = {isa = PBXBuildFile; fileRef = 44CB5E24C139D1AC70383F04 /* earth_texture.png */; };
+		F9F22CA252B3D709E1CE6DCF /* SundialCoreGraphics in Frameworks */ = {isa = PBXBuildFile; productRef = BE08AE53B8AEE6C37C49E9DE /* SundialCoreGraphics */; };
+		FC0D9D775F78AEB894654078 /* HoroscopeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 725ED45F90DE1E1EE00792F4 /* HoroscopeService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		856445E69A16B3C6459211A5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D876D68250FAF9DBD350179C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A54A3C90AE65978706045271;
+			remoteInfo = SundialWatchWidgets;
+		};
+		B7BC7DFA6C9AA705BDA93795 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D876D68250FAF9DBD350179C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A5A6ADE2F26EB1E46E601918;
+			remoteInfo = Sundial;
+		};
+		C838EEF567B0A4EC6EC72CFE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D876D68250FAF9DBD350179C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9956EF13ECA87245D726D4BB;
+			remoteInfo = SundialWatch;
+		};
+		D8D8E11EF5D771CF84D21440 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D876D68250FAF9DBD350179C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5EE3FE740DC1ADEF28016AE9;
+			remoteInfo = SundialWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E826C605C94CCAA6ECF69925 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				3D8FFC65DF0F26CD5F0A8883 /* SundialWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EC14502AEEDC292D176B118C /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				623ECD5F9A9EF35365E204AB /* SundialWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F8B9C4B8384792F9BBBEA97E /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				2FADA98701B9CF939D181163 /* SundialWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		08D1538E493CCB9EE58AAF76 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		0BC00E1452A219A8D53C1B23 /* ScreenshotScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotScene.swift; sourceTree = "<group>"; };
+		0C94E030E82EDB1373E53A9B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		124BE81163E7DB05AEEE3522 /* InstrumentModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentModel.swift; sourceTree = "<group>"; };
+		1CD871E7CF275FC69D2D7F46 /* SundialWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SundialWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		254B232236F82BFADEF3E963 /* InstrumentWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentWidget.swift; sourceTree = "<group>"; };
+		31730FE68857577E619E0A67 /* WatchContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchContentView.swift; sourceTree = "<group>"; };
+		370829743638A789E362A450 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		40D75043E3C49343327CB84F /* AstrologyPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstrologyPanel.swift; sourceTree = "<group>"; };
+		44CB5E24C139D1AC70383F04 /* earth_texture.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = earth_texture.png; sourceTree = "<group>"; };
+		4DF23E405B62A25B7F75AA9B /* SundialWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SundialWatchApp.swift; sourceTree = "<group>"; };
+		519A3F048677C86D876C6C48 /* TuckMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TuckMenu.swift; sourceTree = "<group>"; };
+		558679A5E15732B9295C0930 /* SundialWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SundialWidgets.swift; sourceTree = "<group>"; };
+		5889B2F9C9B4CA6D29D85A97 /* SundialApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SundialApp.swift; sourceTree = "<group>"; };
+		5F1B8AAC12052191C2159507 /* sundial-condensed-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "sundial-condensed-OFL.txt"; sourceTree = "<group>"; };
+		613CCF59DE37F6CFA9E79E88 /* WatchSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSettingsView.swift; sourceTree = "<group>"; };
+		65E6F3D469A2FDBA98DA4456 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		67C76BAFC8F08D1A7A18C3CE /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		67E1F74450DB04C43A83344C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		6901B9002C76D024E1F1767F /* SundialUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SundialUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		6997F36E2306B64A5CEE4F9C /* SundialResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SundialResources.swift; sourceTree = "<group>"; };
+		6FA2F9E3D7E6BC28ECAD44F1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		6FD9F7CCDAFC40D301083B71 /* LockScreenWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenWidgets.swift; sourceTree = "<group>"; };
+		7057AD1D6C94C745CB7FD8C5 /* CalendarStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarStore.swift; sourceTree = "<group>"; };
+		725ED45F90DE1E1EE00792F4 /* HoroscopeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoroscopeService.swift; sourceTree = "<group>"; };
+		7573C93A763A8EDD65925F47 /* sundial-apple */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "sundial-apple"; path = ..; sourceTree = SOURCE_ROOT; };
+		766B640502816E17BA41AFC6 /* CalendarPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPanel.swift; sourceTree = "<group>"; };
+		76859C284D8EE284190B8715 /* ReportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportSheet.swift; sourceTree = "<group>"; };
+		7D36B7DE2CD7A5D7896E9B9C /* Sundial.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sundial.entitlements; sourceTree = "<group>"; };
+		815838BE55533E7C5F222133 /* InstrumentImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentImage.swift; sourceTree = "<group>"; };
+		83CB1EE26BF476EC066F9B71 /* FoundationModels.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = FoundationModels.framework; path = System/Library/Frameworks/FoundationModels.framework; sourceTree = SDKROOT; };
+		8D738C8B10A4237F9CF231D2 /* InstrumentControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentControls.swift; sourceTree = "<group>"; };
+		96EE88AB2ACD3B101DF03A0D /* SundialWatchWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SundialWatchWidgets.entitlements; sourceTree = "<group>"; };
+		9C5E01DD60B6111801559722 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A46DB36D8B3C8419D607B8B7 /* ReadingReportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingReportService.swift; sourceTree = "<group>"; };
+		AF802F84AF4D4A7E0B2239F7 /* Sundial.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sundial.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B048900FBE96C599DCCC27CD /* SettingsPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPanel.swift; sourceTree = "<group>"; };
+		B1EDA573CDBD522D622EF228 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B216F20F12E3E59A2E9C46DC /* SundialWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SundialWatch.entitlements; sourceTree = "<group>"; };
+		B26ED1EE157219C85371DFF3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		B8BBE306CAD410C48235A69F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BCAC47385DFE4CCF6824F6C2 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
+		D1510B46E6A2B7B8151DF5C8 /* sundial_condensed.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = sundial_condensed.ttf; sourceTree = "<group>"; };
+		D510EA902F5AC617FC1F244D /* WatchComplications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchComplications.swift; sourceTree = "<group>"; };
+		E119FF06740080C214F7F5F9 /* SundialWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SundialWidgets.entitlements; sourceTree = "<group>"; };
+		E5F4A91B1F78A612DFFB786B /* SundialWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SundialWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F6C96375ACC2A85F00954836 /* SundialWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SundialWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F88FD0B30EA9B9E2B0FE5ACB /* InstrumentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		5D32684A1BCAFAAA20EE5863 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EE028065BD437BFDFA802CC7 /* SundialCore in Frameworks */,
+				22E0408DB479A529C739EF02 /* SundialRender in Frameworks */,
+				37DD3FF126868B4D26EBEA7E /* SundialCoreGraphics in Frameworks */,
+				1EE1DB062D3C5E8D3A71549F /* FoundationModels.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		656E5438E599296A8BBF9EE9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F0B9BDF046BE3929A32DC395 /* SundialCore in Frameworks */,
+				C50F50E9657124123CFD564A /* SundialRender in Frameworks */,
+				B7F2A113FFA2CA8351CD873F /* SundialCoreGraphics in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A483733A16806483203B2DBE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E9D8A76B6E5F4DC6A76DEBB1 /* SundialCore in Frameworks */,
+				25571F3F91655C333051F310 /* SundialRender in Frameworks */,
+				F9F22CA252B3D709E1CE6DCF /* SundialCoreGraphics in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F6F2837FA3AAE99C01722E9D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C5348E6F8C53036459575BE9 /* SundialCore in Frameworks */,
+				D789B1C5AD03E1A84E7A2662 /* SundialRender in Frameworks */,
+				E8EF4A84B6C6FC3D1D6CCD00 /* SundialCoreGraphics in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		04BE87FA5EADB00A477B576C /* SundialWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				0C94E030E82EDB1373E53A9B /* Info.plist */,
+				67E1F74450DB04C43A83344C /* PrivacyInfo.xcprivacy */,
+				E119FF06740080C214F7F5F9 /* SundialWidgets.entitlements */,
+			);
+			path = SundialWidgets;
+			sourceTree = "<group>";
+		};
+		205D63686A4E8F004AD7362F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				83CB1EE26BF476EC066F9B71 /* FoundationModels.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		216C9D4AA9378AF62A6C8A3E /* Sundial */ = {
+			isa = PBXGroup;
+			children = (
+				B8BBE306CAD410C48235A69F /* Info.plist */,
+				67C76BAFC8F08D1A7A18C3CE /* PrivacyInfo.xcprivacy */,
+				7D36B7DE2CD7A5D7896E9B9C /* Sundial.entitlements */,
+			);
+			path = Sundial;
+			sourceTree = "<group>";
+		};
+		232D42240251B577FD2D0AAB /* Sundial */ = {
+			isa = PBXGroup;
+			children = (
+				ACA159D23D498C2268D9C009 /* Services */,
+				08D1538E493CCB9EE58AAF76 /* AppModel.swift */,
+				40D75043E3C49343327CB84F /* AstrologyPanel.swift */,
+				766B640502816E17BA41AFC6 /* CalendarPanel.swift */,
+				B1EDA573CDBD522D622EF228 /* ContentView.swift */,
+				8D738C8B10A4237F9CF231D2 /* InstrumentControls.swift */,
+				76859C284D8EE284190B8715 /* ReportSheet.swift */,
+				B048900FBE96C599DCCC27CD /* SettingsPanel.swift */,
+				5889B2F9C9B4CA6D29D85A97 /* SundialApp.swift */,
+				519A3F048677C86D876C6C48 /* TuckMenu.swift */,
+			);
+			path = Sundial;
+			sourceTree = "<group>";
+		};
+		4C9369AA5540196E300A04F6 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AF802F84AF4D4A7E0B2239F7 /* Sundial.app */,
+				6901B9002C76D024E1F1767F /* SundialUITests.xctest */,
+				F6C96375ACC2A85F00954836 /* SundialWatch.app */,
+				1CD871E7CF275FC69D2D7F46 /* SundialWatchWidgets.appex */,
+				E5F4A91B1F78A612DFFB786B /* SundialWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		58C5252EC4EA737992169814 /* SundialWatch */ = {
+			isa = PBXGroup;
+			children = (
+				4DF23E405B62A25B7F75AA9B /* SundialWatchApp.swift */,
+				31730FE68857577E619E0A67 /* WatchContentView.swift */,
+				613CCF59DE37F6CFA9E79E88 /* WatchSettingsView.swift */,
+			);
+			path = SundialWatch;
+			sourceTree = "<group>";
+		};
+		8520376CC18859E77ED5A653 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				815838BE55533E7C5F222133 /* InstrumentImage.swift */,
+				124BE81163E7DB05AEEE3522 /* InstrumentModel.swift */,
+				F88FD0B30EA9B9E2B0FE5ACB /* InstrumentView.swift */,
+				0BC00E1452A219A8D53C1B23 /* ScreenshotScene.swift */,
+				6997F36E2306B64A5CEE4F9C /* SundialResources.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		8A2C8FEFF086A6682BDCC39B /* SundialWatchWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				D510EA902F5AC617FC1F244D /* WatchComplications.swift */,
+			);
+			path = SundialWatchWidgets;
+			sourceTree = "<group>";
+		};
+		97728446583239F196C4A6E6 /* SundialWatchWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				B26ED1EE157219C85371DFF3 /* Info.plist */,
+				6FA2F9E3D7E6BC28ECAD44F1 /* PrivacyInfo.xcprivacy */,
+				96EE88AB2ACD3B101DF03A0D /* SundialWatchWidgets.entitlements */,
+			);
+			path = SundialWatchWidgets;
+			sourceTree = "<group>";
+		};
+		A93D397E28BF3B5FA3C16CA3 /* SundialWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				254B232236F82BFADEF3E963 /* InstrumentWidget.swift */,
+				6FD9F7CCDAFC40D301083B71 /* LockScreenWidgets.swift */,
+				558679A5E15732B9295C0930 /* SundialWidgets.swift */,
+			);
+			path = SundialWidgets;
+			sourceTree = "<group>";
+		};
+		ACA159D23D498C2268D9C009 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				7057AD1D6C94C745CB7FD8C5 /* CalendarStore.swift */,
+				725ED45F90DE1E1EE00792F4 /* HoroscopeService.swift */,
+				A46DB36D8B3C8419D607B8B7 /* ReadingReportService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		B4BBD1EEB088F1A81D2AA32E /* SundialWatch */ = {
+			isa = PBXGroup;
+			children = (
+				9C5E01DD60B6111801559722 /* Info.plist */,
+				370829743638A789E362A450 /* PrivacyInfo.xcprivacy */,
+				B216F20F12E3E59A2E9C46DC /* SundialWatch.entitlements */,
+			);
+			path = SundialWatch;
+			sourceTree = "<group>";
+		};
+		CB20F57BA7BE6245A455B1CD /* SundialUITests */ = {
+			isa = PBXGroup;
+			children = (
+				BCAC47385DFE4CCF6824F6C2 /* ScreenshotTests.swift */,
+			);
+			path = SundialUITests;
+			sourceTree = "<group>";
+		};
+		D6933BA12CDB5494F5C9DFE5 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				216C9D4AA9378AF62A6C8A3E /* Sundial */,
+				B4BBD1EEB088F1A81D2AA32E /* SundialWatch */,
+				97728446583239F196C4A6E6 /* SundialWatchWidgets */,
+				04BE87FA5EADB00A477B576C /* SundialWidgets */,
+				65E6F3D469A2FDBA98DA4456 /* Assets.xcassets */,
+				44CB5E24C139D1AC70383F04 /* earth_texture.png */,
+				D1510B46E6A2B7B8151DF5C8 /* sundial_condensed.ttf */,
+				5F1B8AAC12052191C2159507 /* sundial-condensed-OFL.txt */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		E6BA6F5CB066751D0EF9D92A /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				7573C93A763A8EDD65925F47 /* sundial-apple */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		E9BDFC4A18333819CDDADCB2 = {
+			isa = PBXGroup;
+			children = (
+				E6BA6F5CB066751D0EF9D92A /* Packages */,
+				D6933BA12CDB5494F5C9DFE5 /* Resources */,
+				8520376CC18859E77ED5A653 /* Shared */,
+				232D42240251B577FD2D0AAB /* Sundial */,
+				CB20F57BA7BE6245A455B1CD /* SundialUITests */,
+				58C5252EC4EA737992169814 /* SundialWatch */,
+				8A2C8FEFF086A6682BDCC39B /* SundialWatchWidgets */,
+				A93D397E28BF3B5FA3C16CA3 /* SundialWidgets */,
+				205D63686A4E8F004AD7362F /* Frameworks */,
+				4C9369AA5540196E300A04F6 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5EE3FE740DC1ADEF28016AE9 /* SundialWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 67A16B87061EF8C5916DDB80 /* Build configuration list for PBXNativeTarget "SundialWidgets" */;
+			buildPhases = (
+				EE6DD065A19B7C4BA46D547D /* Sources */,
+				7F2B296B9E301CEF6CAEF523 /* Resources */,
+				656E5438E599296A8BBF9EE9 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SundialWidgets;
+			packageProductDependencies = (
+				0A6C143E345669EE3CB2BEBB /* SundialCore */,
+				9CCCB763E6E18449060BA8F5 /* SundialRender */,
+				620CC2C790634C04E616D816 /* SundialCoreGraphics */,
+			);
+			productName = SundialWidgets;
+			productReference = E5F4A91B1F78A612DFFB786B /* SundialWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		9956EF13ECA87245D726D4BB /* SundialWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2C75454569AE54E4F7171B96 /* Build configuration list for PBXNativeTarget "SundialWatch" */;
+			buildPhases = (
+				8EBDC136364410BF45B1E457 /* Sources */,
+				AD11C6052671675764AAB55B /* Resources */,
+				F6F2837FA3AAE99C01722E9D /* Frameworks */,
+				EC14502AEEDC292D176B118C /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C9BB19AD838906BE58D21D25 /* PBXTargetDependency */,
+			);
+			name = SundialWatch;
+			packageProductDependencies = (
+				D7BD1255CD464EAA141571D8 /* SundialCore */,
+				610F203C88E2E799A8C330A9 /* SundialRender */,
+				6432434C3ED6D74F0BC35294 /* SundialCoreGraphics */,
+			);
+			productName = SundialWatch;
+			productReference = F6C96375ACC2A85F00954836 /* SundialWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A54A3C90AE65978706045271 /* SundialWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 432FAA710E4D5F29AD0D6FFA /* Build configuration list for PBXNativeTarget "SundialWatchWidgets" */;
+			buildPhases = (
+				504037E1A17444107D2B1482 /* Sources */,
+				644C0692F27BEF0DC76CA40C /* Resources */,
+				A483733A16806483203B2DBE /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SundialWatchWidgets;
+			packageProductDependencies = (
+				89018D5FC7725FDAF5EEDB43 /* SundialCore */,
+				EBBFB2B5B31B3A134274608A /* SundialRender */,
+				BE08AE53B8AEE6C37C49E9DE /* SundialCoreGraphics */,
+			);
+			productName = SundialWatchWidgets;
+			productReference = 1CD871E7CF275FC69D2D7F46 /* SundialWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		A5A6ADE2F26EB1E46E601918 /* Sundial */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C9315F2869F1F222AB3A3FB2 /* Build configuration list for PBXNativeTarget "Sundial" */;
+			buildPhases = (
+				5E833F794E3E303BD7AB4A39 /* Sources */,
+				D2770A6F6BAAC465A01ACE4F /* Resources */,
+				5D32684A1BCAFAAA20EE5863 /* Frameworks */,
+				F8B9C4B8384792F9BBBEA97E /* Embed Foundation Extensions */,
+				E826C605C94CCAA6ECF69925 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				91C207BAB076D8FA2369535E /* PBXTargetDependency */,
+				5EDB15629778710D6F56C80D /* PBXTargetDependency */,
+			);
+			name = Sundial;
+			packageProductDependencies = (
+				1CFE8AD159635400DA9583E4 /* SundialCore */,
+				57FC58E4B0E0A66D859C70E3 /* SundialRender */,
+				FD4BE5D5BC1335E6BF41ADFF /* SundialCoreGraphics */,
+			);
+			productName = Sundial;
+			productReference = AF802F84AF4D4A7E0B2239F7 /* Sundial.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D4A8FFA6CFCABA8545FB9146 /* SundialUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C0C9D61AEDF38A8B3C047F74 /* Build configuration list for PBXNativeTarget "SundialUITests" */;
+			buildPhases = (
+				258E761A5543AE0758F726FE /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6BAE201EF85920D96783A7A3 /* PBXTargetDependency */,
+			);
+			name = SundialUITests;
+			packageProductDependencies = (
+			);
+			productName = SundialUITests;
+			productReference = 6901B9002C76D024E1F1767F /* SundialUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D876D68250FAF9DBD350179C /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					5EE3FE740DC1ADEF28016AE9 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					9956EF13ECA87245D726D4BB = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					A54A3C90AE65978706045271 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					A5A6ADE2F26EB1E46E601918 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					D4A8FFA6CFCABA8545FB9146 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+						TestTargetID = A5A6ADE2F26EB1E46E601918;
+					};
+				};
+			};
+			buildConfigurationList = 9421296BF18E8A7FDE720770 /* Build configuration list for PBXProject "Sundial" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = E9BDFC4A18333819CDDADCB2;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4E4C39F0E121901C1457F7CB /* XCLocalSwiftPackageReference ".." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4C9369AA5540196E300A04F6 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A5A6ADE2F26EB1E46E601918 /* Sundial */,
+				5EE3FE740DC1ADEF28016AE9 /* SundialWidgets */,
+				9956EF13ECA87245D726D4BB /* SundialWatch */,
+				A54A3C90AE65978706045271 /* SundialWatchWidgets */,
+				D4A8FFA6CFCABA8545FB9146 /* SundialUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		644C0692F27BEF0DC76CA40C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				24D6A6821C87B68646B27385 /* Assets.xcassets in Resources */,
+				6354B1E3988669DEAD302581 /* PrivacyInfo.xcprivacy in Resources */,
+				F9510D749CEB9EE0C9F8D4C5 /* earth_texture.png in Resources */,
+				745C550C7978E8CA007B1C61 /* sundial-condensed-OFL.txt in Resources */,
+				022A2E9E8689BA95A3D922B5 /* sundial_condensed.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7F2B296B9E301CEF6CAEF523 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3B7735A6D73DA31552E21A2D /* Assets.xcassets in Resources */,
+				1F4C9C4AF998F3F45CA6ACA7 /* PrivacyInfo.xcprivacy in Resources */,
+				0B6A3F016A2AB6A8621A0001 /* earth_texture.png in Resources */,
+				D9C2A237482A7648E82EC010 /* sundial-condensed-OFL.txt in Resources */,
+				956A309ABBF2E71D0C462DB9 /* sundial_condensed.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AD11C6052671675764AAB55B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				52AFF77085EB0F89C2FDDDA8 /* Assets.xcassets in Resources */,
+				43269FA77A11F9670B7D20F5 /* PrivacyInfo.xcprivacy in Resources */,
+				E34132ABE3609979E76D0193 /* earth_texture.png in Resources */,
+				F21D36E72B6A37DA98174DC0 /* sundial-condensed-OFL.txt in Resources */,
+				AD383FD3BC3702DB71707B3D /* sundial_condensed.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D2770A6F6BAAC465A01ACE4F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C877CD01DFBDA0DC09638EB7 /* Assets.xcassets in Resources */,
+				696FEC236533CA0BEB6229A2 /* PrivacyInfo.xcprivacy in Resources */,
+				42F7D549AE625BC37213BCCA /* earth_texture.png in Resources */,
+				957E8164EEB13BA2982BD926 /* sundial-condensed-OFL.txt in Resources */,
+				4D398E1FDF81F6BE1990AEB3 /* sundial_condensed.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		258E761A5543AE0758F726FE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EE61FCFA61164226276FF1C4 /* ScreenshotTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		504037E1A17444107D2B1482 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D9A4512B626D4662E89F0FD5 /* InstrumentImage.swift in Sources */,
+				5D6BFC654068D47DB707B27D /* SundialResources.swift in Sources */,
+				3F9288CE909F0338EDDB0151 /* WatchComplications.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5E833F794E3E303BD7AB4A39 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ED1261BD34EF58B274B511C6 /* AppModel.swift in Sources */,
+				4ACF115DF22E254BEDF15233 /* AstrologyPanel.swift in Sources */,
+				50A94C56FFCA397BE65D0205 /* CalendarPanel.swift in Sources */,
+				5554090018AFF3C38BDC0434 /* CalendarStore.swift in Sources */,
+				D07F07BD152BFFB8EA2880F2 /* ContentView.swift in Sources */,
+				FC0D9D775F78AEB894654078 /* HoroscopeService.swift in Sources */,
+				F7808455C5C3DD3277A08490 /* InstrumentControls.swift in Sources */,
+				798720215DAEE5D2F39F432B /* InstrumentImage.swift in Sources */,
+				9C2084433A6828C9E2EAA6FD /* InstrumentModel.swift in Sources */,
+				9CF07C1ADDFD97BEA2E49656 /* InstrumentView.swift in Sources */,
+				7A424B91899DC805CC6E767F /* ReadingReportService.swift in Sources */,
+				3676B5D6E891F1DEDC640476 /* ReportSheet.swift in Sources */,
+				8FFE5E925773D2E281219C9B /* ScreenshotScene.swift in Sources */,
+				C04C978BB6774973DF0DFC14 /* SettingsPanel.swift in Sources */,
+				F75B6F09C72DADD1DA2CDFAD /* SundialApp.swift in Sources */,
+				25BEA7AF3A4C683194C659A0 /* SundialResources.swift in Sources */,
+				3AFA56D429CD1F582F43FF3D /* TuckMenu.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8EBDC136364410BF45B1E457 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				171C11C5EA1B9890E701C688 /* InstrumentImage.swift in Sources */,
+				12020853BBE2B334D7B88AE8 /* InstrumentModel.swift in Sources */,
+				9B043E4507C3522067AA71D8 /* InstrumentView.swift in Sources */,
+				B23A4EDA7376D44A811ECF48 /* ScreenshotScene.swift in Sources */,
+				5FB8AF742C41BBDAE4359152 /* SundialResources.swift in Sources */,
+				77C648435B54B96C61E91213 /* SundialWatchApp.swift in Sources */,
+				B5A170B7AF5FBB242F3F32E5 /* WatchContentView.swift in Sources */,
+				644B3B36D77986E9468DF90E /* WatchSettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EE6DD065A19B7C4BA46D547D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				59677547ACAFD19520025D22 /* InstrumentImage.swift in Sources */,
+				66EF59DECD1F42FD9454ACD8 /* InstrumentWidget.swift in Sources */,
+				CF2841F8D507EF26BF55140F /* LockScreenWidgets.swift in Sources */,
+				B48C06859F8176253603AB7A /* SundialResources.swift in Sources */,
+				9F4AD46FC904BDBB2D08BF2B /* SundialWidgets.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		5EDB15629778710D6F56C80D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9956EF13ECA87245D726D4BB /* SundialWatch */;
+			targetProxy = C838EEF567B0A4EC6EC72CFE /* PBXContainerItemProxy */;
+		};
+		6BAE201EF85920D96783A7A3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A5A6ADE2F26EB1E46E601918 /* Sundial */;
+			targetProxy = B7BC7DFA6C9AA705BDA93795 /* PBXContainerItemProxy */;
+		};
+		91C207BAB076D8FA2369535E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5EE3FE740DC1ADEF28016AE9 /* SundialWidgets */;
+			targetProxy = D8D8E11EF5D771CF84D21440 /* PBXContainerItemProxy */;
+		};
+		C9BB19AD838906BE58D21D25 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A54A3C90AE65978706045271 /* SundialWatchWidgets */;
+			targetProxy = 856445E69A16B3C6459211A5 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0E6F16CD6C62FF5AF0CFD950 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/SundialWatch/SundialWatch.entitlements;
+				INFOPLIST_FILE = Resources/SundialWatch/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.metavirtuoso.sundial.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		1098CCF9052C1100A780A39D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 3.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				VERSIONING_SYSTEM = "apple-generic";
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		1F240253F4BEFB8AD4D9038A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/Sundial/Sundial.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				INFOPLIST_FILE = Resources/Sundial/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.metavirtuoso.sundial;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		282CF81BD7BEDEB7DF07AB6A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/Sundial/Sundial.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				INFOPLIST_FILE = Resources/Sundial/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.metavirtuoso.sundial;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		5F4E4AD5458A5F1DDA507A2D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = Resources/SundialWatchWidgets/SundialWatchWidgets.entitlements;
+				INFOPLIST_FILE = Resources/SundialWatchWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.metavirtuoso.sundial.watchkitapp.widgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		634F34702ADB2DF1BCD6F88A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = Resources/SundialWatchWidgets/SundialWatchWidgets.entitlements;
+				INFOPLIST_FILE = Resources/SundialWatchWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.metavirtuoso.sundial.watchkitapp.widgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		70D1CC09E4A4FCFC16ACAA48 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = Resources/SundialWidgets/SundialWidgets.entitlements;
+				INFOPLIST_FILE = Resources/SundialWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.metavirtuoso.sundial.widgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		75BD3C9DDBCBF4EF804C1F55 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = Resources/SundialWidgets/SundialWidgets.entitlements;
+				INFOPLIST_FILE = Resources/SundialWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.metavirtuoso.sundial.widgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		97F4B9F3855419046DF2D11C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.metavirtuoso.sundial.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Sundial;
+			};
+			name = Debug;
+		};
+		AAE5C9EDD0060DB7B8E0A322 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.metavirtuoso.sundial.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Sundial;
+			};
+			name = Release;
+		};
+		AD8652F84F7815620597BA57 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/SundialWatch/SundialWatch.entitlements;
+				INFOPLIST_FILE = Resources/SundialWatch/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.metavirtuoso.sundial.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		BDF802EE3A21DCEA76E39258 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 3.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				VERSIONING_SYSTEM = "apple-generic";
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2C75454569AE54E4F7171B96 /* Build configuration list for PBXNativeTarget "SundialWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AD8652F84F7815620597BA57 /* Debug */,
+				0E6F16CD6C62FF5AF0CFD950 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		432FAA710E4D5F29AD0D6FFA /* Build configuration list for PBXNativeTarget "SundialWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				634F34702ADB2DF1BCD6F88A /* Debug */,
+				5F4E4AD5458A5F1DDA507A2D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		67A16B87061EF8C5916DDB80 /* Build configuration list for PBXNativeTarget "SundialWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				70D1CC09E4A4FCFC16ACAA48 /* Debug */,
+				75BD3C9DDBCBF4EF804C1F55 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9421296BF18E8A7FDE720770 /* Build configuration list for PBXProject "Sundial" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1098CCF9052C1100A780A39D /* Debug */,
+				BDF802EE3A21DCEA76E39258 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C0C9D61AEDF38A8B3C047F74 /* Build configuration list for PBXNativeTarget "SundialUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				97F4B9F3855419046DF2D11C /* Debug */,
+				AAE5C9EDD0060DB7B8E0A322 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C9315F2869F1F222AB3A3FB2 /* Build configuration list for PBXNativeTarget "Sundial" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				282CF81BD7BEDEB7DF07AB6A /* Debug */,
+				1F240253F4BEFB8AD4D9038A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		4E4C39F0E121901C1457F7CB /* XCLocalSwiftPackageReference ".." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0A6C143E345669EE3CB2BEBB /* SundialCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundialCore;
+		};
+		1CFE8AD159635400DA9583E4 /* SundialCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundialCore;
+		};
+		57FC58E4B0E0A66D859C70E3 /* SundialRender */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundialRender;
+		};
+		610F203C88E2E799A8C330A9 /* SundialRender */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundialRender;
+		};
+		620CC2C790634C04E616D816 /* SundialCoreGraphics */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundialCoreGraphics;
+		};
+		6432434C3ED6D74F0BC35294 /* SundialCoreGraphics */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundialCoreGraphics;
+		};
+		89018D5FC7725FDAF5EEDB43 /* SundialCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundialCore;
+		};
+		9CCCB763E6E18449060BA8F5 /* SundialRender */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundialRender;
+		};
+		BE08AE53B8AEE6C37C49E9DE /* SundialCoreGraphics */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundialCoreGraphics;
+		};
+		D7BD1255CD464EAA141571D8 /* SundialCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundialCore;
+		};
+		EBBFB2B5B31B3A134274608A /* SundialRender */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundialRender;
+		};
+		FD4BE5D5BC1335E6BF41ADFF /* SundialCoreGraphics */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundialCoreGraphics;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = D876D68250FAF9DBD350179C /* Project object */;
+}

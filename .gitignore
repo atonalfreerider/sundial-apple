@@ -6,3 +6,6 @@
 DerivedData/
 .DS_Store
 /renders/
+
+# Drafts rendered by AppStore/screenshots-draft/render.sh; CI captures the real screenshots.
+/AppStore/screenshots-draft/*.png
