@@ -100,10 +100,13 @@ public struct Path: Sendable {
 
     public var isEmpty: Bool { elements.isEmpty }
 
+    /// Path.rewind(): SkPath::rewind resets the fill type to winding as well (only Path.reset()
+    /// keeps it, and that is not ported).
     public mutating func rewind() {
         elements.removeAll(keepingCapacity: true)
         current = nil
         contourStart = nil
+        fillRule = .winding
     }
 
     public mutating func moveTo(_ x: Double, _ y: Double) {
@@ -189,8 +192,15 @@ public struct Path: Sendable {
         close()
     }
 
+    /// Path.addRoundRect (SkRRect::setRectXY): radii that do not fit are scaled down together,
+    /// by the factor that makes the tighter axis fit, so a short wide rectangle gets round ends.
     public mutating func addRoundRect(_ rect: Rect, _ rx: Double, _ ry: Double) {
-        let rx = min(rx, rect.width / 2), ry = min(ry, rect.height / 2)
+        var rx = rx, ry = ry
+        if rect.width < rx + rx || rect.height < ry + ry {
+            let scale = min(rect.width / (rx + rx), rect.height / (ry + ry))
+            rx *= scale
+            ry *= scale
+        }
         guard rx > 0, ry > 0 else { addRect(rect); return }
         moveTo(rect.left + rx, rect.top)
         lineTo(rect.right - rx, rect.top)
@@ -247,8 +257,8 @@ public enum Shader: Equatable, Sendable {
 }
 
 public enum FontFace: Equatable, Sendable {
-    /// Franklin Gothic condensed, bundled with the app: the instrument's labels.
-    case franklinCondensed
+    /// Sundial Condensed, bundled with the app: the instrument's labels.
+    case sundialCondensed
     /// The platform serif, for the zodiac glyphs (Typeface.SERIF).
     case serif
     /// The platform sans serif (Android's default typeface).
@@ -360,9 +370,26 @@ public protocol Canvas: AnyObject {
     /// Fills the whole canvas (within the clip) with [color].
     func drawColor(_ color: ARGB)
 
-    /// Advance width of [text], letter spacing included (Paint.measureText).
+    /// Advance width of [text], letter spacing included (Paint.measureText): Minikin's advance
+    /// rounded up to a whole Android pixel (a device pixel at the host's scale), as
+    /// Paint.measureText rounds it.
     func measureText(_ text: String, _ paint: Paint) -> Double
+    /// The unrounded advance of [text] as Minikin lays it out (the MeasuredParagraph and Layout
+    /// widths), letter spacing included: what TextUtils.ellipsize, StaticLayout and
+    /// drawTextOnPath measure with, where measureText is Paint.measureText's rounded-up value.
+    func textAdvance(_ text: String, _ paint: Paint) -> Double
     func fontMetrics(_ paint: Paint) -> FontMetrics
+
+    /// Only the shadow that drawText(text, x, y, paint) would cast (paint.shadow), without the
+    /// text; nothing when the paint has no shadow. A run drawn glyph by glyph uses it to cast its
+    /// shadow once under every glyph and then draw each glyph once, as Android draws a run.
+    func drawTextShadow(_ text: String, _ x: Double, _ y: Double, _ paint: Paint)
+
+    /// Canvas.drawTextOnPath along a circular arc (see TextLayout.swift, which has the default:
+    /// glyph by glyph through drawText). A backend that can shape the whole string at once (Core
+    /// Text: bidi, joining, ligatures, fallback fonts) draws it itself, as Minikin does.
+    func drawTextOnArc(_ text: String, cx: Double, cy: Double, radius: Double, startAngle: Double,
+                       clockwise: Bool, vOffset: Double, _ paint: Paint)
 }
 
 public extension Canvas {
@@ -433,79 +460,145 @@ public extension Canvas {
     /// (0 for a disc): [colors] run clockwise from 3 o'clock at [positions] (0...1, or evenly).
     /// Neither Core Graphics nor SVG has sweep gradients, and wedges would show seams in a
     /// translucent band, so it is rendered as an antialiased image at the canvas's pixel scale.
-    func fillSweep(center: Point, innerRadius: Double, outerRadius: Double, colors: [ARGB], positions: [Double]? = nil) {
+    ///
+    /// Android evaluates the gradient per pixel at any zoom. Here a zoom that keeps changing (the
+    /// camera flight, [inMotion]) would render a new image every quarter step, so while it moves
+    /// an image already made for the same ring at another scale is reused, resampled; at rest the
+    /// ring is rendered at the canvas's own scale.
+    func fillSweep(center: Point, innerRadius: Double, outerRadius: Double, colors: [ARGB], positions: [Double]? = nil,
+                   inMotion: Bool = false) {
         guard colors.count >= 2, outerRadius > innerRadius else { return }
         // Round the scale up to a quarter step so a cached image serves small zoom changes.
         let scale = max(0.25, (pixelScale * 4).rounded(.up) / 4)
-        let image = SweepGradientImages.image(innerRadius: innerRadius, outerRadius: outerRadius, colors: colors,
-                                              positions: positions, scale: scale)
-        let half = outerRadius + 1 / scale
+        let (image, imageScale) = SweepGradientImages.image(innerRadius: innerRadius, outerRadius: outerRadius,
+                                                            colors: colors, positions: positions, scale: scale,
+                                                            reuseAnyScale: inMotion)
+        let half = outerRadius + 1 / imageScale
         drawImage(image, Rect(center.x - half, center.y - half, center.x + half, center.y + half), alpha: 1)
     }
 }
 
-/// The last few sweep-gradient rings, which change only with the season or the zoom.
+/// The last few sweep-gradient rings, which change only with the season or the zoom. Six hold the
+/// images of both resting views (the wash, band and bezel of the solar view; the band and bezel of
+/// the zoomed Earth view); a camera flight reuses them rather than adding a scale per frame.
 enum SweepGradientImages {
     private struct Key: Hashable {
         let inner: Double, outer: Double, colors: [ARGB], positions: [Double]?, scale: Double
+
+        func sameRing(_ other: Key) -> Bool {
+            inner == other.inner && outer == other.outer && colors == other.colors && positions == other.positions
+        }
     }
 
+    static let capacity = 6
     private static var cache: [(Key, PixelImage)] = []
     private static let lock = NSLock()
 
     static func image(innerRadius: Double, outerRadius: Double, colors: [ARGB], positions: [Double]?,
                       scale: Double) -> PixelImage {
+        image(innerRadius: innerRadius, outerRadius: outerRadius, colors: colors, positions: positions, scale: scale,
+              reuseAnyScale: false).image
+    }
+
+    /// The ring at [scale] device pixels per unit, or with [reuseAnyScale] the cached image of the
+    /// same ring whose scale is nearest; returns the image and the scale it was rendered at.
+    static func image(innerRadius: Double, outerRadius: Double, colors: [ARGB], positions: [Double]?,
+                      scale: Double, reuseAnyScale: Bool) -> (image: PixelImage, scale: Double) {
         let key = Key(inner: innerRadius, outer: outerRadius, colors: colors, positions: positions, scale: scale)
         lock.lock()
-        if let index = cache.firstIndex(where: { $0.0 == key }) {
+        var index = cache.firstIndex(where: { $0.0 == key })
+        if index == nil && reuseAnyScale {
+            // The nearest scale by ratio: resampling it is hidden by the movement.
+            index = cache.indices.filter { cache[$0].0.sameRing(key) }
+                .min { abs(log(cache[$0].0.scale / scale)) < abs(log(cache[$1].0.scale / scale)) }
+        }
+        if let index {
             let hit = cache.remove(at: index)
             cache.append(hit)
             lock.unlock()
-            return hit.1
+            return (hit.1, hit.0.scale)
         }
         lock.unlock()
         let image = render(key)
         lock.lock()
         cache.append((key, image))
-        if cache.count > 6 { cache.removeFirst() }
+        if cache.count > capacity { cache.removeFirst() }
         lock.unlock()
-        return image
+        return (image, scale)
     }
 
     private static func render(_ key: Key) -> PixelImage {
         let stops = key.positions ?? key.colors.indices.map { Double($0) / Double(key.colors.count - 1) }
-        let colors = key.colors
+        let parts = key.colors.map {
+            (Double(Colors.alpha($0)), Double(Colors.red($0)), Double(Colors.green($0)), Double(Colors.blue($0)))
+        }
+        // The first stop (from 1) at or after the start of each of [buckets] equal slices of the
+        // turn: the stop search for an angle in a slice begins there instead of at stop 1. It
+        // finds the same stop as a scan from the start, so the colours are unchanged.
+        let buckets = 4096
+        var firstStop = [Int](repeating: stops.count, count: buckets)
+        var next = 1
+        for bucket in 0..<buckets {
+            let start = Double(bucket) / Double(buckets)
+            while next < stops.count && stops[next] < start { next += 1 }
+            firstStop[bucket] = next
+        }
         func colorAt(_ t: Double) -> (Double, Double, Double, Double) {
-            func parts(_ c: ARGB) -> (Double, Double, Double, Double) {
-                (Double(Colors.alpha(c)), Double(Colors.red(c)), Double(Colors.green(c)), Double(Colors.blue(c)))
-            }
-            if t <= stops[0] { return parts(colors[0]) }
-            for i in 1..<stops.count where t <= stops[i] {
-                let span = stops[i] - stops[i - 1]
-                let f = span > 0 ? (t - stops[i - 1]) / span : 0
-                let a = parts(colors[i - 1]), b = parts(colors[i])
-                return (a.0 + (b.0 - a.0) * f, a.1 + (b.1 - a.1) * f, a.2 + (b.2 - a.2) * f, a.3 + (b.3 - a.3) * f)
-            }
-            return parts(colors[colors.count - 1])
+            if t <= stops[0] { return parts[0] }
+            var i = firstStop[min(buckets - 1, max(0, Int(t * Double(buckets))))]
+            while i < stops.count && !(t <= stops[i]) { i += 1 }
+            guard i < stops.count else { return parts[parts.count - 1] }
+            let span = stops[i] - stops[i - 1]
+            let f = span > 0 ? (t - stops[i - 1]) / span : 0
+            let a = parts[i - 1], b = parts[i]
+            // Premultiplied, as Android interpolates gradients (see GradientStops).
+            let alpha = a.0 + (b.0 - a.0) * f
+            guard alpha > 0 else { return (0, 0, 0, 0) }
+            func channel(_ c0: Double, _ c1: Double) -> Double { (c0 * a.0 * (1 - f) + c1 * b.0 * f) / alpha }
+            return (alpha, channel(a.1, b.1), channel(a.2, b.2), channel(a.3, b.3))
         }
         let half = key.outer + 1 / key.scale
         let size = max(2, Int((2 * half * key.scale).rounded(.up)))
         let unit = 2 * half / Double(size)
         var pixels = [ARGB](repeating: 0, count: size * size)
+        // Coverage is 0 beyond outer + unit/2 and, for a ring, within inner − unit/2: each row
+        // visits only the span between (a pixel wider on each side), not the whole square.
+        let outerReach = key.outer + unit / 2
+        let innerReach = key.inner - unit / 2
+        func pixelIndex(_ x: Double) -> Double { (x + half) / unit - 0.5 }
+        func shade(_ px: Int, _ py: Int, _ y: Double) {
+            let x = (Double(px) + 0.5) * unit - half
+            let distance = (x * x + y * y).squareRoot()
+            // Antialiased edges: coverage across one device pixel at each rim.
+            var coverage = min(1, max(0, (key.outer - distance) / unit + 0.5))
+            if key.inner > 0 { coverage *= min(1, max(0, (distance - key.inner) / unit + 0.5)) }
+            if coverage <= 0 { return }
+            var degrees = atan2(y, x) * 180 / .pi
+            if degrees < 0 { degrees += 360 }
+            let c = colorAt(degrees / 360)
+            pixels[py * size + px] = Colors.argb(Int((c.0 * coverage).rounded()), Int(c.1.rounded()),
+                                                 Int(c.2.rounded()), Int(c.3.rounded()))
+        }
         for py in 0..<size {
             let y = (Double(py) + 0.5) * unit - half
-            for px in 0..<size {
-                let x = (Double(px) + 0.5) * unit - half
-                let distance = (x * x + y * y).squareRoot()
-                // Antialiased edges: coverage across one device pixel at each rim.
-                var coverage = min(1, max(0, (key.outer - distance) / unit + 0.5))
-                if key.inner > 0 { coverage *= min(1, max(0, (distance - key.inner) / unit + 0.5)) }
-                if coverage <= 0 { continue }
-                var degrees = atan2(y, x) * 180 / .pi
-                if degrees < 0 { degrees += 360 }
-                let c = colorAt(degrees / 360)
-                pixels[py * size + px] = Colors.argb(Int((c.0 * coverage).rounded()), Int(c.1.rounded()),
-                                                     Int(c.2.rounded()), Int(c.3.rounded()))
+            let y2 = y * y
+            guard y2 < outerReach * outerReach else { continue }
+            let xOuter = (outerReach * outerReach - y2).squareRoot()
+            let first = max(0, Int(pixelIndex(-xOuter).rounded(.down)))
+            let last = min(size - 1, Int(pixelIndex(xOuter).rounded(.up)))
+            guard first <= last else { continue }
+            // The hole of a ring: pixels whose centres lie within inner − unit/2 are skipped.
+            var holeFirst = last + 1, holeLast = last
+            if key.inner > 0 && innerReach > 0 && y2 < innerReach * innerReach {
+                let xInner = (innerReach * innerReach - y2).squareRoot()
+                holeFirst = Int(pixelIndex(-xInner).rounded(.up)) + 1
+                holeLast = Int(pixelIndex(xInner).rounded(.down)) - 1
+            }
+            if holeFirst > holeLast {
+                for px in first...last { shade(px, py, y) }
+            } else {
+                if first < holeFirst { for px in first..<min(holeFirst, last + 1) { shade(px, py, y) } }
+                if holeLast < last { for px in max(holeLast + 1, first)...last { shade(px, py, y) } }
             }
         }
         return PixelImage(width: size, height: size, pixels: pixels)

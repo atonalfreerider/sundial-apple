@@ -84,9 +84,25 @@ public struct LocalDate: Hashable, Comparable, Sendable, CustomStringConvertible
     public func withDayOfYear(_ dayOfYear: Int) -> LocalDate { LocalDate.ofYearDay(year, dayOfYear) }
     public func withDayOfMonth(_ day: Int) -> LocalDate { LocalDate(year, month, day) }
 
-    /// The first instant of this date in [zone] (java.time's atStartOfDay).
+    /// The first instant of this date in [zone] (java.time's atStartOfDay). When local midnight
+    /// falls in a gap, the day starts at the transition (the gap's end), as java.time does, not
+    /// at midnight moved later by the gap's length as ZonedDateTime.of would resolve it.
     public func atStartOfDay(_ zone: TimeZone) -> Date {
-        ZonedDateTime.instant(localSeconds: Double(epochDay) * 86_400, zone: zone)
+        let local = Double(epochDay) * 86_400
+        let resolved = ZonedDateTime.instant(localSeconds: local, zone: zone)
+        func offset(_ utc: Double) -> Double { Double(zone.secondsFromGMT(for: Date(timeIntervalSince1970: utc))) }
+        // local - offsetBefore: at or after the transition.
+        var hi = resolved.timeIntervalSince1970
+        let after = offset(hi)
+        guard hi + after != local else { return resolved }  // midnight exists
+        // Before the transition (the offset before it still applies). tzdb transitions fall on
+        // whole seconds, so bisect over whole seconds to the first instant with the new offset.
+        var lo = local - after
+        while hi - lo > 1 {
+            let mid = ((lo + hi) / 2).rounded(.down)
+            if offset(mid) == after { hi = mid } else { lo = mid }
+        }
+        return Date(timeIntervalSince1970: hi)
     }
 
     /// The date of [instant] in [zone].
@@ -104,17 +120,39 @@ public struct LocalDate: Hashable, Comparable, Sendable, CustomStringConvertible
 
     public static func < (lhs: LocalDate, rhs: LocalDate) -> Bool { lhs.epochDay < rhs.epochDay }
 
-    /// ISO format, as java.time's LocalDate.toString(): 2026-09-25.
+    /// ISO format, as java.time's LocalDate.toString(): 2026-09-25, and outside 0...9999 the
+    /// year padded to four digits after its sign (-0001-07-04) or signed (+10000-01-01).
     public var description: String {
-        String(format: "%04d-%02d-%02d", year, month, day)
+        let magnitude = abs(year)
+        let yearText = magnitude < 1000
+            ? (year < 0 ? "-" : "") + String(format: "%04d", magnitude)
+            : (year > 9999 ? "+" : "") + String(year)
+        return yearText + String(format: "-%02d-%02d", month, day)
     }
 
-    /// Parses ISO yyyy-MM-dd (LocalDate.parse); nil for anything else or an impossible date.
+    /// Parses ISO yyyy-MM-dd (LocalDate.parse, strict ISO_LOCAL_DATE): a year of four ASCII
+    /// digits, or more with a sign ('+' only beyond four digits; not "-0000"); nil for anything
+    /// else or an impossible date.
     public static func parse(_ text: String) -> LocalDate? {
-        let parts = text.split(separator: "-", omittingEmptySubsequences: false)
-        guard parts.count == 3, parts[0].count == 4, parts[1].count == 2, parts[2].count == 2,
-              let y = Int(parts[0]), let m = Int(parts[1]), let d = Int(parts[2]),
-              (1...12).contains(m), d >= 1, d <= lengthOfMonth(y, m) else { return nil }
+        var body = Substring(text)
+        var sign: Character?
+        if let first = body.first, first == "+" || first == "-" {
+            sign = first
+            body = body.dropFirst()
+        }
+        let parts = body.split(separator: "-", omittingEmptySubsequences: false)
+        func digits(_ part: Substring) -> Bool { !part.isEmpty && part.allSatisfy { $0.isASCII && $0.isNumber } }
+        guard parts.count == 3, parts.allSatisfy(digits), parts[1].count == 2, parts[2].count == 2 else { return nil }
+        let yearDigits = parts[0].count
+        switch sign {
+        case nil: guard yearDigits == 4 else { return nil }
+        case "+": guard (5...10).contains(yearDigits) else { return nil }
+        default: guard (4...10).contains(yearDigits) else { return nil }
+        }
+        guard let magnitude = Int(parts[0]), let m = Int(parts[1]), let d = Int(parts[2]),
+              !(sign == "-" && magnitude == 0) else { return nil }
+        let y = sign == "-" ? -magnitude : magnitude
+        guard (1...12).contains(m), d >= 1, d <= lengthOfMonth(y, m) else { return nil }
         return LocalDate(y, m, d)
     }
 }
@@ -141,10 +179,19 @@ public struct LocalTime: Hashable, Comparable, Sendable, CustomStringConvertible
         second == 0 ? String(format: "%02d:%02d", hour, minute) : String(format: "%02d:%02d:%02d", hour, minute, second)
     }
 
-    /// Parses HH:mm or HH:mm:ss (LocalTime.parse).
+    /// Parses HH:mm, HH:mm:ss or HH:mm:ss.fraction (LocalTime.parse, ISO_LOCAL_TIME): two ASCII
+    /// digits per field, and after the seconds an optional '.' with up to nine digits. The
+    /// fraction is checked and dropped, since a LocalTime here holds whole seconds (java.time
+    /// keeps it, so toString would print it).
     public static func parse(_ text: String) -> LocalTime? {
-        let parts = text.split(separator: ":", omittingEmptySubsequences: false)
-        guard parts.count == 2 || parts.count == 3, parts.allSatisfy({ $0.count == 2 }),
+        func digits2(_ p: Substring) -> Bool { p.count == 2 && p.allSatisfy { $0.isASCII && $0.isNumber } }
+        var parts = text.split(separator: ":", omittingEmptySubsequences: false)
+        if parts.count == 3, let dot = parts[2].firstIndex(of: ".") {
+            let fraction = parts[2][parts[2].index(after: dot)...]
+            guard fraction.count <= 9, fraction.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
+            parts[2] = parts[2][..<dot]
+        }
+        guard parts.count == 2 || parts.count == 3, parts.allSatisfy(digits2),
               let h = Int(parts[0]), let m = Int(parts[1]),
               (0...23).contains(h), (0...59).contains(m) else { return nil }
         let s = parts.count == 3 ? Int(parts[2]) : 0
@@ -207,7 +254,13 @@ public struct ZonedDateTime: Sendable {
 }
 
 /// Formats an instant in a zone with a java.time / ICU pattern, in English (as the Android app's
-/// DateTimeFormatter.ofPattern on an English device).
+/// DateTimeFormatter.ofPattern on an English device), in the proleptic Gregorian calendar as
+/// java.time's ISO chronology is.
+///
+/// Accepted difference: ofPattern(p) formats in the device's default locale, so on a French or
+/// German Android device the month and weekday names and the AM/PM marker are translated (inside
+/// otherwise English captions and descriptions, since the app ships no translations). Here they
+/// are always English.
 public enum CivilFormat {
     private static var cache: [String: DateFormatter] = [:]
     private static let lock = NSLock()
@@ -223,6 +276,10 @@ public enum CivilFormat {
             formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")
             formatter.calendar = Calendar(identifier: .gregorian)
+            // Foundation's Gregorian calendar turns Julian before 1582-10-15; java.time and
+            // LocalDate are proleptic. Move the cutover far before year 1 (not Date.distantPast,
+            // which is 0001-01-01T00:00Z and leaves local 1 January of year 1 east of UTC Julian).
+            formatter.gregorianStartDate = Date(timeIntervalSince1970: -1e13)
             formatter.timeZone = zone
             formatter.dateFormat = pattern
             cache[key] = formatter
@@ -242,7 +299,17 @@ public extension Date {
     /// Adds whole and fractional seconds (Instant.plusSeconds / plusMillis / plusNanos).
     func plusSeconds(_ seconds: Double) -> Date { addingTimeInterval(seconds) }
     var epochSecond: Int64 { Int64((timeIntervalSince1970).rounded(.down)) }
-    var epochMillis: Int64 { Int64((timeIntervalSince1970 * 1_000).rounded(.down)) }
+    /// Instant.toEpochMilli(), the floor of the exact instant. A Date holds a Double relative to
+    /// 2001, so a whole number of milliseconds often lands just below the integer: values within
+    /// the Double's own error of one (under 5e-4 ms in this century, more centuries away) are
+    /// snapped to it, and only a Date really between two milliseconds is floored.
+    var epochMillis: Int64 {
+        let seconds = timeIntervalSince1970
+        let m = seconds * 1_000
+        let r = m.rounded()
+        let error = 4_000 * max(seconds.ulp, timeIntervalSinceReferenceDate.ulp)
+        return Int64(abs(m - r) < max(1e-3, error) ? r : m.rounded(.down))
+    }
 }
 
 public extension TimeZone {

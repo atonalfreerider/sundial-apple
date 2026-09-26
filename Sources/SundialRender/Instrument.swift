@@ -18,11 +18,20 @@ public final class Instrument {
     public let density: Double
     /// Android's TextPaint.density alias; the same value.
     var screenDensity: Double { density }
-    /// The zone the instrument's civil calendar and clock follow.
-    public var zone: TimeZone = .current
+    /// The zone the instrument's civil calendar and clock follow. Android reads
+    /// ZoneId.systemDefault() on every access, so a change of the device's zone shows on the next
+    /// frame; the auto-updating zone does the same here. Screenshots pin a fixed zone.
+    public var zone: TimeZone = .autoupdatingCurrent
     /// The canvas size of the frame being drawn (or last drawn).
     public private(set) var width: Double = 0
     public private(set) var height: Double = 0
+    /// Device pixels per canvas unit when the frame began, before any camera transform: Android
+    /// draws on a pixel canvas, so its bare pixel literals (hairline floors) go through
+    /// devicePixels(_:).
+    var pixelsPerUnit = 1.0
+    /// True while the Earth camera flight draws: its zoom changes every frame, so rasterised sweep
+    /// gradients reuse a cached image instead of rendering one per zoom step (Canvas.fillSweep).
+    var cameraInMotion = false
 
     /// The current time and a monotonic clock in seconds, for animation. Tests replace them.
     public var currentDate: () -> Date = { Date() }
@@ -46,19 +55,19 @@ public final class Instrument {
     var text: Paint = {
         var p = Paint(color: Colors.white)
         p.textAlign = .center
-        p.font = .franklinCondensed
+        p.font = .sundialCondensed
         return p
     }()
     var dimText: Paint = {
         var p = Paint(color: Colors.argb(150, 255, 255, 255))
         p.textAlign = .center
-        p.font = .franklinCondensed
+        p.font = .sundialCondensed
         return p
     }()
     /// Curved event titles; they are laid from the arc's start, so left aligned.
     var arcLabel: Paint = {
         var p = Paint()
-        p.font = .franklinCondensed
+        p.font = .sundialCondensed
         return p
     }()
     var polygon = Paint(style: .fill)
@@ -100,11 +109,14 @@ public final class Instrument {
         var random = KotlinRandom(seed: 0x51A7_D1A1)
         return (0..<170).map { index in
             let radius = random.nextFloat().squareRoot()
-            let angle = random.nextFloat() * 2 * Float.pi
+            // Kotlin's PI.toFloat() rounds to nearest, one ulp above Swift's Float.pi, and its
+            // Float cos/sin go through Double (Math.cos): both matter for a bit-exact sky.
+            let angle = random.nextFloat() * 2 * Float(Double.pi)
             let big = index % 11 == 0
             let radiusDp = 0.28 + random.nextFloat() * (big ? 1.12 : 0.63)
             let alpha = 30 + Int(random.nextInt(big ? 100 : 64))
-            return AmbientStar(xFraction: Double(radius * cos(angle)), yFraction: Double(radius * sin(angle)),
+            let cosine = Float(cos(Double(angle))), sine = Float(sin(Double(angle)))
+            return AmbientStar(xFraction: Double(radius * cosine), yFraction: Double(radius * sine),
                                radiusDp: Double(radiusDp), alpha: alpha, flare: index % 17 == 0)
         }
     }()
@@ -221,7 +233,7 @@ public final class Instrument {
     /// down for a watch if wanted (Android decodes it at half size there).
     public init(layout: InstrumentLayout = .phone, density: Double = 1, earthTexture: PixelImage,
                 style: CelestialStyle = .voidBlack, zodiacProfile: ZodiacProfile = ZodiacProfile(),
-                horoscope: String? = nil, zone: TimeZone = .current, now: Date = Date()) {
+                horoscope: String? = nil, zone: TimeZone = .autoupdatingCurrent, now: Date = Date()) {
         self.layout = layout
         self.density = density
         self.zone = zone
@@ -274,7 +286,6 @@ public final class Instrument {
     /// Freezes the instrument in one moment, style and view for screenshots; nothing is saved.
     public func freezeForCapture(instant: Date, state captureState: ViewState, style: CelestialStyle) {
         pauseClock()
-        realtime = false
         backgroundStyle = style
         state = captureState
         transitionFrom = nil
@@ -308,6 +319,8 @@ public final class Instrument {
         guard ambient != value else { return }
         ambient = value
         transitionFrom = nil
+        // Android keeps no filtered copies outside always-on (it filters one layer per frame).
+        if !value { FilteredImages.removeAll() }
         invalidate()
     }
 
@@ -329,6 +342,7 @@ public final class Instrument {
     public func draw(_ canvas: Canvas) {
         width = canvas.width
         height = canvas.height
+        pixelsPerUnit = canvas.pixelScale > 0 ? canvas.pixelScale : 1
         nextRedrawDelay = nil
         useInk(false)
         if ambient {
@@ -466,6 +480,11 @@ public final class Instrument {
     }
 
     func lerp(_ start: Double, _ end: Double, _ progress: Double) -> Double { start + (end - start) * progress }
+
+    /// A length Android gives in bare view pixels (such as `maxOf(.5f, r * .0015f)`), in canvas
+    /// units: the same in the pixel-based reference renders, a fraction of a point on an iOS host
+    /// that draws in points.
+    func devicePixels(_ pixels: Double) -> Double { pixels / pixelsPerUnit }
 
     func distance(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) -> Double { hypot(x1 - x2, y1 - y2) }
 

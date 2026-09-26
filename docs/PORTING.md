@@ -89,7 +89,7 @@ Canvas methods keep Android's argument order: `canvas.drawCircle(cx, cy, r, pain
 | `SweepGradient(cx, cy, colors, positions)` on a circle | `canvas.fillSweep(center:innerRadius:outerRadius:colors:positions:)` (a filled disc has inner radius 0; a stroked ring spans radius ± strokeWidth/2) |
 | `DashPathEffect([on, off], 0)` | `paint.dash = [on, off]` |
 | `Paint.Style.FILL / STROKE`, `Cap.ROUND` … | `.fill / .stroke`, `.round` … |
-| `typeface = resources.getFont(R.font.franklin_condensed)` / `labelFont` | `font = .franklinCondensed` |
+| `typeface = resources.getFont(R.font.sundial_condensed)` / `labelFont` | `font = .sundialCondensed` |
 | `Typeface.create(Typeface.SERIF, …)` | `font = .serif` |
 | `TextUtils.ellipsize(s, paint, w, END)` | `canvas.ellipsize(s, paint, w)` |
 | `StaticLayout` (wrapped, centred, maxLines, ellipsized) | `canvas.layoutText(…)` then `canvas.drawTextBlock(…)` |
