@@ -63,7 +63,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Friday 25 September 2026, 20:30 in Los Angeles (PDT, UTC−7).
     static let instant = "2026-09-26T03:30:00Z"
-    static let zone = "America/Los_Angeles"
+    static let screenshotZone = "America/Los_Angeles"
 
     override func setUpWithError() throws {
         // A scene that fails should not cost the others.
@@ -101,7 +101,7 @@ final class ScreenshotTests: XCTestCase {
         var arguments = [
             "-screenshotScene", scene.argument,
             "-screenshotInstant", instant,
-            "-screenshotZone", zone,
+            "-screenshotZone", screenshotZone,
             // A known language, region and text size, whatever the simulator was set to.
             "-AppleLanguages", "(en-US)",
             "-AppleLocale", "en_US",
@@ -119,7 +119,7 @@ final class ScreenshotTests: XCTestCase {
     private func capture(_ scene: Scene) {
         let app = XCUIApplication()
         app.launchArguments = Self.launchArguments(scene)
-        app.launchEnvironment["TZ"] = Self.zone
+        app.launchEnvironment["TZ"] = Self.screenshotZone
         app.launch()
         guard app.wait(for: .runningForeground, timeout: 60) else {
             XCTFail("\(scene.name): Sundial did not come to the foreground")
