@@ -123,7 +123,7 @@ struct InstrumentWidgetView: View {
     }
 }
 
-private extension View {
+private extension Image {
     /// On a tinted or clear Home Screen (iOS 18+ accented rendering), draw the instrument in its
     /// own colours. Without this, WidgetKit tints the opaque bitmap by its alpha and the widget
     /// becomes a flat rectangle.
