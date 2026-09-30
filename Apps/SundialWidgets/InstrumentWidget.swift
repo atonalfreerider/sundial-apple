@@ -123,15 +123,17 @@ struct InstrumentWidgetView: View {
     }
 }
 
-private extension Image {
+private extension View {
     /// On a tinted or clear Home Screen (iOS 18+ accented rendering), draw the instrument in its
     /// own colours. Without this, WidgetKit tints the opaque bitmap by its alpha and the widget
     /// becomes a flat rectangle.
-    func instrumentAccentedRendering() -> Image {
+    @ViewBuilder
+    func instrumentAccentedRendering() -> some View {
         if #available(iOS 18.0, *) {
-            return widgetAccentedRenderingMode(.fullColor)
+            widgetAccentedRenderingMode(.fullColor)
+        } else {
+            self
         }
-        return self
     }
 }
 

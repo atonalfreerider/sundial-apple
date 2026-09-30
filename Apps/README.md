@@ -109,6 +109,22 @@ xcodebuild -project Apps/Sundial.xcodeproj -scheme SundialWatch \
 
 The package's own tests run anywhere, including Linux: `swift test` at the repository root.
 
+### Sideloading with a free Apple Account (no Mac)
+
+The `Sideload` workflow (`.github/workflows/sideload.yml`, on every push to `main` or by hand)
+builds the iOS app for devices on a GitHub macOS runner and uploads it, unsigned and without the
+watch app, as `Sundial-sideload.ipa` in the `sideload-ipa` artifact:
+
+```bash
+gh run download --repo atonalfreerider/sundial-apple --name sideload-ipa --dir build
+```
+
+A sideloading tool that signs with a free Apple Account (a Personal Team), such as Plume
+Impactor on Linux, re-signs it and installs it over USB (`usbmuxd` must be running). On the
+iPhone, turn on Developer Mode, then trust the developer under Settings → General → VPN & Device
+Management. A free account's signature lasts **7 days**; install again to renew it. It can have
+3 sideloaded apps at a time and register 10 app ids a week (the app and its widgets take two).
+
 The App Store screenshots come from `SundialUITests/ScreenshotTests` (the `Sundial` scheme's test
 action), which launches the app in its screenshot mode; CI runs it on an iPhone 17 Pro Max and
 an iPad Pro 13-inch simulator (see the test's header and `docs/RELEASE.md`). Locally:

@@ -1,0 +1,76 @@
+# Sideload build: the iOS app for a real iPhone or iPad, unsigned, as `Sundial-sideload.ipa` in the
+# `sideload-ipa` artifact. A sideloading tool re-signs it with a free Apple Account (a Personal
+# Team) and installs it over USB, from Linux too (see Apps/README.md, "Sideloading with a free
+# Apple Account"). The app and its widgets are ad-hoc signed with their entitlements only so the
+# tool can carry the App Group over; nothing is signed with a certificate here.
+#
+# The watch app is left out: a Personal Team registers at most 10 app ids a week and 3 apps at a
+# time, and sideloading tools do not install embedded watch apps reliably.
+name: Sideload
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: sideload-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  PROJECT: Apps/Sundial.xcodeproj
+  DERIVED_DATA: build/DerivedData
+
+jobs:
+  ipa:
+    name: Unsigned iOS app for sideloading
+    # The newest macOS image, the only one with Xcode 27 (the image's default Xcode).
+    runs-on: xcode-27
+    timeout-minutes: 60
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Xcode
+        run: |
+          xcodebuild -version
+          command -v xcbeautify >/dev/null || brew install xcbeautify
+
+      - name: Build the iOS app (iOS device, Release)
+        run: |
+          xcodebuild build -project "$PROJECT" -scheme Sundial -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify --renderer github-actions
+
+      - name: Package Sundial-sideload.ipa
+        run: |
+          app="$DERIVED_DATA/Build/Products/Release-iphoneos/Sundial.app"
+          rm -rf build/Payload && mkdir -p build/Payload
+          cp -R "$app" build/Payload/
+          app=build/Payload/Sundial.app
+          rm -rf "$app/Watch"
+          # Innermost first: frameworks, the widget extension, then the app.
+          find "$app" -depth \( -name '*.framework' -o -name '*.dylib' \) -print0 |
+            xargs -0 -I{} codesign --force --sign - {}
+          codesign --force --sign - \
+            --entitlements Apps/Resources/SundialWidgets/SundialWidgets.entitlements \
+            "$app/PlugIns/SundialWidgets.appex"
+          codesign --force --sign - \
+            --entitlements Apps/Resources/Sundial/Sundial.entitlements "$app"
+          codesign --display --entitlements - "$app"
+          (cd build && zip -qry Sundial-sideload.ipa Payload)
+          ls -l build/Sundial-sideload.ipa
+
+      - name: Upload Sundial-sideload.ipa
+        uses: actions/upload-artifact@v7
+        with:
+          name: sideload-ipa
+          path: build/Sundial-sideload.ipa
+          if-no-files-found: error
