@@ -246,7 +246,9 @@ extension Instrument {
             colors: [0xAAFF_FCE5, 0x38D9_D4B9, Colors.transparent],
             stops: [0, 0.42, 1])
         canvas.drawCircle(x, y, radius * 2.7, aura)
-        let moon = moonRenderer.render(Int(radius * 2), sunX - x, sunY - y)
+        // Android's size is in device pixels (its canvas unit), and MoonSphereRenderer clamps it
+        // in pixels: render at the resolution the glyph is drawn at, whatever the host's units.
+        let moon = moonRenderer.render(Int(radius * 2 * pixelsPerUnit), sunX - x, sunY - y)
         // Android draws the bitmap with the shared fill paint, so it takes that paint's alpha.
         canvas.drawImage(moon, Rect(x - radius, y - radius, x + radius, y + radius), alpha: Double(fill.alpha) / 255)
         white.color = withAlpha(instrumentColor, 184); white.strokeWidth = max(devicePixels(1), radius * 0.075)

@@ -180,9 +180,12 @@ extension Instrument {
         // Like Unity's angle search from the last date, keep scrubbing continuous across New Year
         // instead of wrapping back to the start of the displayed year.
         let current = selectedInstant
+        // abs(Duration.between(current, it).seconds): getSeconds() floors (a negative duration
+        // keeps its nanos positive), so -100.6 s counts as 101 s.
+        func seconds(_ candidate: Date) -> Int64 { abs(Int64(candidate.timeIntervalSince(current).rounded(.down))) }
         selectedInstant = ((displayedYear - 1)...(displayedYear + 1))
             .map { Astronomy.instantAtYearFraction($0, fraction, zone) }
-            .min(by: { abs(Int64($0.timeIntervalSince(current))) < abs(Int64($1.timeIntervalSince(current))) })!
+            .min(by: { seconds($0) < seconds($1) })!
         invalidate()
     }
 

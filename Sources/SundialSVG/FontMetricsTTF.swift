@@ -9,18 +9,25 @@ import SundialRender
 // app uses (hinting on, neither linear nor subpixel text). That means:
 //   - ascent, descent and leading are hhea's ascender, descender and lineGap scaled to the text
 //     size (OS/2's typo values instead when the font sets USE_TYPO_METRICS), unrounded;
+//   - the glyphs are the font's after HarfBuzz's default substitutions that change which glyph
+//     is drawn in Latin text: 'rvrn', and the 'liga' and 'clig' ligatures unless the letter
+//     spacing turns them off (Minikin does above 0.03 em). A ligature is one glyph, and its
+//     cluster's whole advance goes to its first character;
 //   - each glyph advances by hmtx's width scaled to the size and rounded to a whole pixel (the
 //     hinted advance), plus the pair kerning, unrounded (HarfBuzz): GPOS's 'kern' feature when
-//     the font has a GPOS table, else the legacy 'kern' table;
+//     the font's GPOS has one, else the legacy 'kern' table;
 //   - letter spacing, letterSpacing × size, is rounded to a whole pixel and added once per
-//     character;
+//     cluster (a character, or the characters of a ligature);
 //   - Paint.measureText rounds the total up (Math.ceil); SVGCanvas does that last step.
 // Of GPOS, only pair adjustment (lookup type 2, directly or through an extension) in the 'kern'
 // feature is read: Sundial Condensed kerns that way, and the serif and sans fonts draw single
-// glyphs or plain words where anything else hardly matters.
+// glyphs or plain words where anything else hardly matters. Of GSUB, only single (type 1) and
+// ligature (type 4) substitutions in those features are read, for the 'latn' script's default
+// language system; lookup flags skip base glyphs, ligatures and marks by their GDEF class, but
+// mark attachment types and mark filtering sets are not read.
 
-/// The metrics of one TrueType font: head, hhea, OS/2, hmtx, cmap (format 4 and 12), and the
-/// pair kerning of GPOS or kern.
+/// The metrics of one TrueType font: head, hhea, OS/2, hmtx, cmap (format 4 and 12), the pair
+/// kerning of GPOS or kern, and the GSUB substitutions that change the glyphs of Latin text.
 public final class TrueTypeFont {
     public enum Error: Swift.Error, Equatable {
         case malformed(String)
@@ -41,6 +48,9 @@ public final class TrueTypeFont {
     private let glyphs: [UInt32: UInt16]
     private let legacyKerning: [UInt32: Int]
     private let pairKerning: PairKerning?
+    private let substitutions: Substitutions?
+    /// GDEF's glyph classes: 1 base, 2 ligature, 3 mark, 4 component.
+    private let glyphClasses: [UInt16: Int]
 
     public convenience init(contentsOf url: URL, family: String) throws {
         try self.init(data: Data(contentsOf: url), family: family)
@@ -101,11 +111,16 @@ public final class TrueTypeFont {
         self.advances = advances
 
         glyphs = try TrueTypeFont.readCmap(reader, try table("cmap"))
-        // HarfBuzz leaves the 'kern' table alone whenever GPOS has any lookups.
+        // HarfBuzz applies the 'kern' table only when GPOS has no 'kern' feature.
         pairKerning = try tables["GPOS"].flatMap { try PairKerning(reader, $0.offset) }
         legacyKerning = pairKerning == nil
             ? try tables["kern"].map { try TrueTypeFont.readKern(reader, $0.offset) } ?? [:]
             : [:]
+        glyphClasses = try tables["GDEF"].map { gdef -> [UInt16: Int] in
+            let classDef = try reader.u16(gdef.offset + 4)
+            return classDef == 0 ? [:] : try TrueTypeFont.readClassDef(reader, gdef.offset + classDef)
+        } ?? [:]
+        substitutions = try tables["GSUB"].map { try Substitutions(reader, $0.offset) }
     }
 
     /// The glyph for [scalar], or nil when the font has none (it would draw .notdef).
@@ -120,10 +135,71 @@ public final class TrueTypeFont {
     }
 
     /// Kerning between two glyphs in font units: GPOS pair adjustment, or the legacy 'kern' table
-    /// in a font without GPOS.
+    /// in a font whose GPOS has no 'kern' feature.
     public func kerning(_ left: Int, _ right: Int) -> Int {
         if let pairKerning { return pairKerning.value(left, right) }
         return legacyKerning[UInt32(left) << 16 | UInt32(right)] ?? 0
+    }
+
+    /// The glyphs HarfBuzz ends up with for a run of this font's [glyphs], before positioning:
+    /// GSUB's 'rvrn' substitutions, then with [ligatures] its 'liga' and 'clig' ligatures, each
+    /// lookup in turn in lookup-list order. Each result lists the run positions it came from, in
+    /// order: a ligature's cluster starts at the first. Glyphs a lookup's flag skips (marks, for
+    /// the ligatures) stay where they are, after the ligature that formed across them.
+    public func substitute(_ glyphs: [Int], ligatures: Bool) -> [(glyph: Int, sources: [Int])] {
+        var run = glyphs.enumerated().map { (glyph: $0.element, sources: [$0.offset]) }
+        guard let substitutions else { return run }
+        for lookup in substitutions.required { apply(lookup, &run) }
+        if ligatures { for lookup in substitutions.ligatures { apply(lookup, &run) } }
+        return run
+    }
+
+    /// One pass of a lookup over the run, as HarfBuzz applies it forward: at each glyph the
+    /// lookup does not skip, the first subtable that applies wins, and the pass continues after
+    /// what it replaced.
+    private func apply(_ lookup: Substitutions.Lookup, _ run: inout [(glyph: Int, sources: [Int])]) {
+        var index = 0
+        while index < run.count {
+            let glyph = run[index].glyph
+            if !skips(glyph, lookup.flag), let key = UInt16(exactly: glyph) {
+                subtables: for subtable in lookup.subtables {
+                    switch subtable {
+                    case let .single(map):
+                        guard let replacement = map[key] else { continue }
+                        run[index].glyph = Int(replacement)
+                        break subtables
+                    case let .ligatures(sets):
+                        guard let set = sets[key] else { continue }
+                        for ligature in set {
+                            var positions: [Int] = []
+                            var next = index + 1
+                            var matched = true
+                            for component in ligature.components {
+                                while next < run.count && skips(run[next].glyph, lookup.flag) { next += 1 }
+                                guard next < run.count, run[next].glyph == Int(component) else { matched = false; break }
+                                positions.append(next)
+                                next += 1
+                            }
+                            guard matched else { continue }
+                            run[index].glyph = Int(ligature.glyph)
+                            for position in positions.reversed() {
+                                run[index].sources += run[position].sources
+                                run.remove(at: position)
+                            }
+                            run[index].sources.sort()
+                            break subtables
+                        }
+                    }
+                }
+            }
+            index += 1
+        }
+    }
+
+    /// LookupFlag's IgnoreBaseGlyphs, IgnoreLigatures and IgnoreMarks, by GDEF glyph class.
+    private func skips(_ glyph: Int, _ flag: Int) -> Bool {
+        guard flag & 0xE != 0, let key = UInt16(exactly: glyph), let glyphClass = glyphClasses[key] else { return false }
+        return (flag & 2 != 0 && glyphClass == 1) || (flag & 4 != 0 && glyphClass == 2) || (flag & 8 != 0 && glyphClass == 3)
     }
 
     /// Paint.FontMetrics at [size]: hhea's values scaled, ascent negative.
@@ -233,19 +309,21 @@ public final class TrueTypeFont {
 
         let lookups: [[Subtable]]
 
-        /// Nil when GPOS has no lookups at all (HarfBuzz then falls back to 'kern').
+        /// Nil when GPOS has no 'kern' feature (HarfBuzz then applies the legacy 'kern' table).
         init?(_ reader: Reader, _ gpos: Int) throws {
             let features = gpos + (try reader.u16(gpos + 6))
             let lookupList = gpos + (try reader.u16(gpos + 8))
             let lookupCount = try reader.u16(lookupList)
-            guard lookupCount > 0 else { return nil }
+            var hasKernFeature = false
             var indices = Set<Int>()
             for index in 0..<(try reader.u16(features)) {
                 let record = features + 2 + index * 6
                 guard String(decoding: try reader.slice(record, 4), as: UTF8.self) == "kern" else { continue }
+                hasKernFeature = true
                 let feature = features + (try reader.u16(record + 4))
                 for lookup in 0..<(try reader.u16(feature + 2)) { indices.insert(try reader.u16(feature + 4 + lookup * 2)) }
             }
+            guard hasKernFeature else { return nil }
             var lookups: [[Subtable]] = []
             for index in indices.sorted() where index < lookupCount {
                 let lookup = lookupList + (try reader.u16(lookupList + 2 + index * 2))
@@ -287,7 +365,7 @@ public final class TrueTypeFont {
         /// PairPos format 1 (pair sets) or 2 (class pairs); nil for any other format.
         private static func readPairPos(_ reader: Reader, _ table: Int) throws -> Subtable? {
             let format = try reader.u16(table)
-            let coverage = try readCoverage(reader, table + (try reader.u16(table + 2)))
+            let coverage = try TrueTypeFont.readCoverage(reader, table + (try reader.u16(table + 2)))
             let format1 = try reader.u16(table + 4)
             let format2 = try reader.u16(table + 6)
             // Each value record holds one 16-bit field per bit set in the low byte of its format.
@@ -310,8 +388,8 @@ public final class TrueTypeFont {
                 }
                 return .pairs(coverage: Set(coverage.keys), values: values)
             case 2:
-                let first = try readClassDef(reader, table + (try reader.u16(table + 8)))
-                let second = try readClassDef(reader, table + (try reader.u16(table + 10)))
+                let first = try TrueTypeFont.readClassDef(reader, table + (try reader.u16(table + 8)))
+                let second = try TrueTypeFont.readClassDef(reader, table + (try reader.u16(table + 10)))
                 let firstCount = try reader.u16(table + 12)
                 let secondCount = try reader.u16(table + 14)
                 guard firstCount > 0, secondCount > 0 else { return nil }
@@ -324,51 +402,170 @@ public final class TrueTypeFont {
                 return nil
             }
         }
+    }
 
-        /// Coverage table: glyph → coverage index.
-        private static func readCoverage(_ reader: Reader, _ table: Int) throws -> [UInt16: Int] {
-            var coverage: [UInt16: Int] = [:]
-            switch try reader.u16(table) {
-            case 1:
-                for index in 0..<(try reader.u16(table + 2)) { coverage[UInt16(try reader.u16(table + 4 + index * 2))] = index }
-            case 2:
-                for range in 0..<(try reader.u16(table + 2)) {
-                    let record = table + 4 + range * 6
-                    let start = try reader.u16(record)
-                    let end = try reader.u16(record + 2)
-                    let startIndex = try reader.u16(record + 4)
-                    guard start <= end else { continue }
-                    for glyph in start...end { coverage[UInt16(glyph)] = startIndex + glyph - start }
-                }
-            default:
-                break
-            }
-            return coverage
+    /// GSUB's substitutions in the features HarfBuzz applies by default that change which glyph
+    /// Latin text draws: 'rvrn' (always) and the optional ligatures 'liga' and 'clig'.
+    private struct Substitutions {
+        enum Subtable {
+            case single([UInt16: UInt16])
+            case ligatures([UInt16: [(components: [UInt16], glyph: UInt16)]])
         }
 
-        /// Class definition table: glyph → class (glyphs it does not list are class 0).
-        private static func readClassDef(_ reader: Reader, _ table: Int) throws -> [UInt16: Int] {
-            var classes: [UInt16: Int] = [:]
-            switch try reader.u16(table) {
-            case 1:
-                let start = try reader.u16(table + 2)
-                for index in 0..<(try reader.u16(table + 4)) {
-                    classes[UInt16(truncatingIfNeeded: start + index)] = try reader.u16(table + 6 + index * 2)
+        struct Lookup {
+            let flag: Int
+            let subtables: [Subtable]
+        }
+
+        let required: [Lookup]
+        let ligatures: [Lookup]
+
+        init(_ reader: Reader, _ gsub: Int) throws {
+            let scripts = gsub + (try reader.u16(gsub + 4))
+            let features = gsub + (try reader.u16(gsub + 6))
+            let lookupList = gsub + (try reader.u16(gsub + 8))
+            // The features of the 'latn' script's default language system (else 'DFLT''s): the
+            // ones HarfBuzz looks in for Latin text in a language the font does not list.
+            var scriptTables: [String: Int] = [:]
+            for index in 0..<(try reader.u16(scripts)) {
+                let record = scripts + 2 + index * 6
+                scriptTables[String(decoding: try reader.slice(record, 4), as: UTF8.self)] = scripts + (try reader.u16(record + 4))
+            }
+            let featureCount = try reader.u16(features)
+            var featureIndices = Array(0..<featureCount)
+            if let script = scriptTables["latn"] ?? scriptTables["DFLT"] {
+                let defaultLanguage = try reader.u16(script)
+                featureIndices = []
+                if defaultLanguage != 0 {
+                    let language = script + defaultLanguage
+                    let requiredFeature = try reader.u16(language + 2)
+                    if requiredFeature != 0xFFFF { featureIndices.append(requiredFeature) }
+                    for index in 0..<(try reader.u16(language + 4)) { featureIndices.append(try reader.u16(language + 6 + index * 2)) }
                 }
+            }
+            func lookupIndices(_ tags: Set<String>) throws -> [Int] {
+                var indices = Set<Int>()
+                for index in featureIndices where index < featureCount {
+                    let record = features + 2 + index * 6
+                    guard tags.contains(String(decoding: try reader.slice(record, 4), as: UTF8.self)) else { continue }
+                    let feature = features + (try reader.u16(record + 4))
+                    for lookup in 0..<(try reader.u16(feature + 2)) { indices.insert(try reader.u16(feature + 4 + lookup * 2)) }
+                }
+                return indices.sorted()
+            }
+            let lookupCount = try reader.u16(lookupList)
+            func read(_ index: Int) throws -> Lookup? {
+                guard index < lookupCount else { return nil }
+                let lookup = lookupList + (try reader.u16(lookupList + 2 + index * 2))
+                let type = try reader.u16(lookup)
+                var subtables: [Subtable] = []
+                for subtable in 0..<(try reader.u16(lookup + 4)) {
+                    var offset = lookup + (try reader.u16(lookup + 6 + subtable * 2))
+                    var subtableType = type
+                    if type == 7 { // Extension: the real type and a 32-bit offset.
+                        subtableType = try reader.u16(offset + 2)
+                        offset += try reader.u32(offset + 4)
+                    }
+                    switch subtableType {
+                    case 1: if let single = try Substitutions.readSingle(reader, offset) { subtables.append(single) }
+                    case 4: if let ligatures = try Substitutions.readLigatures(reader, offset) { subtables.append(ligatures) }
+                    default: break
+                    }
+                }
+                return subtables.isEmpty ? nil : Lookup(flag: try reader.u16(lookup + 2), subtables: subtables)
+            }
+            required = try lookupIndices(["rvrn"]).compactMap(read)
+            ligatures = try lookupIndices(["liga", "clig"]).compactMap(read)
+        }
+
+        /// SingleSubst format 1 (a delta) or 2 (a list); nil for any other format.
+        private static func readSingle(_ reader: Reader, _ table: Int) throws -> Subtable? {
+            let format = try reader.u16(table)
+            let coverage = try TrueTypeFont.readCoverage(reader, table + (try reader.u16(table + 2)))
+            var map: [UInt16: UInt16] = [:]
+            switch format {
+            case 1:
+                let delta = try reader.i16(table + 4)
+                for glyph in coverage.keys { map[glyph] = UInt16(truncatingIfNeeded: Int(glyph) + delta) }
             case 2:
-                for range in 0..<(try reader.u16(table + 2)) {
-                    let record = table + 4 + range * 6
-                    let start = try reader.u16(record)
-                    let end = try reader.u16(record + 2)
-                    let value = try reader.u16(record + 4)
-                    guard start <= end else { continue }
-                    for glyph in start...end { classes[UInt16(glyph)] = value }
+                let count = try reader.u16(table + 4)
+                for (glyph, index) in coverage where index < count {
+                    map[glyph] = UInt16(try reader.u16(table + 6 + index * 2))
                 }
             default:
-                break
+                return nil
             }
-            return classes
+            return .single(map)
         }
+
+        /// LigatureSubst format 1: for each first glyph, its ligatures in the font's order (the
+        /// first that matches wins, so fonts list the longest first).
+        private static func readLigatures(_ reader: Reader, _ table: Int) throws -> Subtable? {
+            guard try reader.u16(table) == 1 else { return nil }
+            let coverage = try TrueTypeFont.readCoverage(reader, table + (try reader.u16(table + 2)))
+            let setCount = try reader.u16(table + 4)
+            var sets: [UInt16: [(components: [UInt16], glyph: UInt16)]] = [:]
+            for (glyph, index) in coverage where index < setCount {
+                let set = table + (try reader.u16(table + 6 + index * 2))
+                var ligatures: [(components: [UInt16], glyph: UInt16)] = []
+                for ligature in 0..<(try reader.u16(set)) {
+                    let record = set + (try reader.u16(set + 2 + ligature * 2))
+                    let componentCount = try reader.u16(record + 2)
+                    guard componentCount >= 1 else { continue }
+                    let components = try (0..<(componentCount - 1)).map { UInt16(try reader.u16(record + 4 + $0 * 2)) }
+                    ligatures.append((components, UInt16(try reader.u16(record))))
+                }
+                sets[glyph] = ligatures
+            }
+            return .ligatures(sets)
+        }
+    }
+
+    // MARK: Common tables
+
+    /// Coverage table: glyph → coverage index.
+    private static func readCoverage(_ reader: Reader, _ table: Int) throws -> [UInt16: Int] {
+        var coverage: [UInt16: Int] = [:]
+        switch try reader.u16(table) {
+        case 1:
+            for index in 0..<(try reader.u16(table + 2)) { coverage[UInt16(try reader.u16(table + 4 + index * 2))] = index }
+        case 2:
+            for range in 0..<(try reader.u16(table + 2)) {
+                let record = table + 4 + range * 6
+                let start = try reader.u16(record)
+                let end = try reader.u16(record + 2)
+                let startIndex = try reader.u16(record + 4)
+                guard start <= end else { continue }
+                for glyph in start...end { coverage[UInt16(glyph)] = startIndex + glyph - start }
+            }
+        default:
+            break
+        }
+        return coverage
+    }
+
+    /// Class definition table: glyph → class (glyphs it does not list are class 0).
+    private static func readClassDef(_ reader: Reader, _ table: Int) throws -> [UInt16: Int] {
+        var classes: [UInt16: Int] = [:]
+        switch try reader.u16(table) {
+        case 1:
+            let start = try reader.u16(table + 2)
+            for index in 0..<(try reader.u16(table + 4)) {
+                classes[UInt16(truncatingIfNeeded: start + index)] = try reader.u16(table + 6 + index * 2)
+            }
+        case 2:
+            for range in 0..<(try reader.u16(table + 2)) {
+                let record = table + 4 + range * 6
+                let start = try reader.u16(record)
+                let end = try reader.u16(record + 2)
+                let value = try reader.u16(record + 4)
+                guard start <= end else { continue }
+                for glyph in start...end { classes[UInt16(glyph)] = value }
+            }
+        default:
+            break
+        }
+        return classes
     }
 
     private struct Reader {
@@ -502,75 +699,118 @@ public final class SVGFonts {
         (letterSpacing * size).rounded()
     }
 
+    /// Minikin turns off the optional ligatures ('liga' and 'clig') when the letter spacing, in
+    /// ems as the paint holds it, exceeds 0.03.
+    static func ligaturesOn(_ letterSpacing: Double) -> Bool { abs(letterSpacing) <= 0.03 }
+
     /// The advance of [text] as Minikin lays it out, before Paint.measureText's ceil: hinted
-    /// (whole-pixel) glyph advances, kerning within a font, and the rounded letter spacing once per
-    /// character. Default-ignorable characters (variation selectors, joiners) take no space.
+    /// (whole-pixel) glyph advances after the font's substitutions (ligatures included), kerning
+    /// within a font, and the rounded letter spacing once per cluster. Default-ignorable
+    /// characters (variation selectors, joiners) take no space.
     public func advance(_ text: String, _ face: FontFace, size: Double, letterSpacing: Double) -> Double {
-        let space = SVGFonts.letterSpace(letterSpacing, size: size)
-        let fonts = chain(face)
-        var total = 0.0
-        var previous: (font: TrueTypeFont, glyph: Int)?
-        for character in text {
-            var visible = false
-            for scalar in character.unicodeScalars {
-                if SVGFonts.isDefaultIgnorable(scalar) { continue }
-                visible = true
-                if let font = fonts.first(where: { $0.glyph(scalar) != nil }), let glyph = font.glyph(scalar) {
-                    let scale = size / Double(font.unitsPerEm)
-                    // FreeType's hinted advance: rounded half up to a whole pixel.
-                    total += (Double(font.advanceWidth(glyph)) * scale + 0.5).rounded(.down)
-                    if let previous, previous.font === font {
-                        total += Double(font.kerning(previous.glyph, glyph)) * scale
-                    }
-                    previous = (font, glyph)
-                } else {
-                    total += (SVGFonts.approximation(face).advance * size + 0.5).rounded(.down)
-                    previous = nil
-                }
-            }
-            if visible { total += space }
-        }
-        return total
+        layout(text, face, size: size, letterSpacing: letterSpacing).advance
     }
 
     /// Where Minikin starts each Character's first glyph, from the start of [text], laid out as
     /// advance(_:_:size:letterSpacing:) measures it: half the rounded letter spacing (rounded
-    /// down, letterSpaceHalfLeft) before each visible character and the rest after it, kerning
-    /// with the glyph before (within a font) moving the glyph, and hinted advances.
+    /// down, letterSpaceHalfLeft) before each cluster and the rest after it, kerning with the
+    /// glyph before (within a font) moving the glyph, and hinted advances. The characters a
+    /// ligature takes in after its first share the ligature's origin, as Minikin gives a cluster's
+    /// whole advance to its first character.
     public func origins(_ text: String, _ face: FontFace, size: Double, letterSpacing: Double) -> [Double] {
+        layout(text, face, size: size, letterSpacing: letterSpacing).origins
+    }
+
+    /// A run laid out as Minikin lays it: its advance, each Character's origin, and which
+    /// Characters a ligature started by an earlier one took in.
+    struct TextLayout {
+        let advance: Double
+        let origins: [Double]
+        let inLigature: [Bool]
+    }
+
+    /// One glyph of a laid-out run: its font (nil for the stand-in of a missing font) and the
+    /// Character its cluster starts at.
+    private struct LaidGlyph {
+        let font: TrueTypeFont?
+        let glyph: Int
+        let character: Int
+    }
+
+    func layout(_ text: String, _ face: FontFace, size: Double, letterSpacing: Double) -> TextLayout {
         let space = SVGFonts.letterSpace(letterSpacing, size: size)
         let halfLeft = (space * 0.5).rounded(.down)
         let fonts = chain(face)
+        let characters = Array(text)
+        // Each scalar's glyph in the first font of the chain that has it (Minikin's fallback).
+        var visible = [Bool](repeating: false, count: characters.count)
+        var scalars: [LaidGlyph] = []
+        for (index, character) in characters.enumerated() {
+            for scalar in character.unicodeScalars where !SVGFonts.isDefaultIgnorable(scalar) {
+                visible[index] = true
+                if let font = fonts.first(where: { $0.glyph(scalar) != nil }), let glyph = font.glyph(scalar) {
+                    scalars.append(LaidGlyph(font: font, glyph: glyph, character: index))
+                } else {
+                    scalars.append(LaidGlyph(font: nil, glyph: 0, character: index))
+                }
+            }
+        }
+        // HarfBuzz shapes each font's run as a whole, so a ligature can span characters.
+        let ligatures = SVGFonts.ligaturesOn(letterSpacing)
+        var glyphs: [LaidGlyph] = []
+        var runStart = 0
+        while runStart < scalars.count {
+            var runEnd = runStart + 1
+            while runEnd < scalars.count && scalars[runEnd].font === scalars[runStart].font { runEnd += 1 }
+            if let font = scalars[runStart].font {
+                let run = Array(scalars[runStart..<runEnd])
+                for shaped in font.substitute(run.map(\.glyph), ligatures: ligatures) {
+                    glyphs.append(LaidGlyph(font: font, glyph: shaped.glyph, character: run[shaped.sources[0]].character))
+                }
+            } else {
+                glyphs.append(contentsOf: scalars[runStart..<runEnd])
+            }
+            runStart = runEnd
+        }
         var total = 0.0
         var origins: [Double] = []
+        var inLigature = [Bool](repeating: false, count: characters.count)
         var previous: (font: TrueTypeFont, glyph: Int)?
-        for character in text {
+        var clusterOrigin = 0.0
+        var next = 0
+        for index in characters.indices {
+            let first = next
+            while next < glyphs.count && glyphs[next].character == index { next += 1 }
+            guard next > first else {
+                // A character a ligature took in shares its origin; an invisible one sits where
+                // the next glyph would.
+                origins.append(visible[index] ? clusterOrigin : total)
+                inLigature[index] = visible[index]
+                continue
+            }
+            total += halfLeft
             var origin: Double?
-            var visible = false
-            for scalar in character.unicodeScalars {
-                if SVGFonts.isDefaultIgnorable(scalar) { continue }
-                if !visible {
-                    visible = true
-                    total += halfLeft
-                }
-                if let font = fonts.first(where: { $0.glyph(scalar) != nil }), let glyph = font.glyph(scalar) {
+            for laid in glyphs[first..<next] {
+                if let font = laid.font {
                     let scale = size / Double(font.unitsPerEm)
                     if let previous, previous.font === font {
-                        total += Double(font.kerning(previous.glyph, glyph)) * scale
+                        total += Double(font.kerning(previous.glyph, laid.glyph)) * scale
                     }
                     if origin == nil { origin = total }
-                    total += (Double(font.advanceWidth(glyph)) * scale + 0.5).rounded(.down)
-                    previous = (font, glyph)
+                    // FreeType's hinted advance: rounded half up to a whole pixel.
+                    total += (Double(font.advanceWidth(laid.glyph)) * scale + 0.5).rounded(.down)
+                    previous = (font, laid.glyph)
                 } else {
                     if origin == nil { origin = total }
                     total += (SVGFonts.approximation(face).advance * size + 0.5).rounded(.down)
                     previous = nil
                 }
             }
-            if visible { total += space - halfLeft }
-            origins.append(origin ?? total)
+            total += space - halfLeft
+            clusterOrigin = origin ?? total
+            origins.append(clusterOrigin)
         }
-        return origins
+        return TextLayout(advance: total, origins: origins, inLigature: inLigature)
     }
 
     static func isDefaultIgnorable(_ scalar: Unicode.Scalar) -> Bool {

@@ -271,9 +271,10 @@ public final class CGCanvas: Canvas {
         (paint.letterSpacing * paint.textSize * unitPixels).rounded()
     }
 
-    /// [text] laid out with the rounded letter spacing as its kern.
-    private func layoutLine(_ text: String, _ paint: Paint) -> CTLine {
-        fonts.line(text, paint, kern: letterSpacePixels(paint) / unitPixels)
+    /// [text] laid out with the rounded letter spacing as its kern, its glyph advances hinted to
+    /// whole Android pixels (see HintedLine).
+    private func layoutLine(_ text: String, _ paint: Paint) -> HintedLine {
+        fonts.hintedLine(text, paint, kern: letterSpacePixels(paint) / unitPixels, unitPixels: unitPixels)
     }
 
     /// Where the line starts for textAlign at [x]: aligned on its advance (letter spacing
@@ -281,8 +282,8 @@ public final class CGCanvas: Canvas {
     /// Text's kern adds the whole spacing after each character (the last one included, which is
     /// why the advances agree); Minikin puts floor(spacing / 2) pixels before each character and
     /// the rest after, so a centred label's ink stays centred.
-    private func lineStart(_ line: CTLine, _ x: Double, _ paint: Paint) -> Double {
-        let advance = CTLineGetTypographicBounds(line, nil, nil, nil)
+    private func lineStart(_ line: HintedLine, _ x: Double, _ paint: Paint) -> Double {
+        let advance = line.width
         var left = x
         switch paint.textAlign {
         case .left: break
@@ -293,11 +294,13 @@ public final class CGCanvas: Canvas {
     }
 
     /// Draws [line] with its baseline starting at (left, y) in [argb], filled or outlined per the
-    /// paint. The caller saves the graphics state and the text matrix around it.
-    private func showLine(_ line: CTLine, _ left: Double, _ y: Double, _ paint: Paint, _ argb: ARGB) {
-        // The line takes its colour from the context (kCTForegroundColorFromContextAttributeName),
-        // so one laid-out line serves every colour. Text is filled, or outlined for a stroke paint.
+    /// paint, each glyph at its hinted position. The caller saves the graphics state and the text
+    /// matrix around it.
+    private func showLine(_ line: HintedLine, _ left: Double, _ y: Double, _ paint: Paint, _ argb: ARGB) {
+        // The glyphs take their colour from the context, so one laid-out line serves every colour.
+        // Text is filled, or outlined for a stroke paint.
         let color = CGCanvas.cgColor(argb)
+        context.saveGState()
         context.setFillColor(color)
         if paint.style == .stroke {
             applyStroke(paint)
@@ -307,12 +310,18 @@ public final class CGCanvas: Canvas {
             context.setTextDrawingMode(.fill)
         }
         // Glyphs are y-up. In this y-down user space they would stand upside down, so the text
-        // matrix flips them back (y → −y), and the text position puts the baseline's start at
-        // (left, y): with that matrix, ascenders rise towards smaller y, above the baseline, as on
-        // Android.
+        // matrix flips them back (y → −y): with it, ascenders rise towards smaller y, above the
+        // baseline, as on Android. The baseline's start is reached through the CTM and the text
+        // position stays at the origin, so a glyph's x along the line lands at left + x whether
+        // Core Graphics reads the positions in text space (as it does) or in user space.
+        context.translateBy(x: CGFloat(left), y: CGFloat(y))
         context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
-        context.textPosition = CGPoint(x: CGFloat(left), y: CGFloat(y))
-        CTLineDraw(line, context)
+        for run in line.runs where !run.glyphs.isEmpty {
+            context.textPosition = .zero
+            // One drawing call per run, as CTLineDraw makes, so a shadow is cast once per run.
+            CTFontDrawGlyphs(run.font, run.glyphs, run.positions, run.glyphs.count, context)
+        }
+        context.restoreGState()
     }
 
     public func drawText(_ text: String, _ x: Double, _ y: Double, _ paint: Paint) {
@@ -339,9 +348,9 @@ public final class CGCanvas: Canvas {
     }
 
     /// drawTextOnPath along a circular arc, shaped as Minikin shapes it: one Core Text line for
-    /// the whole label (bidi, joining, ligatures, kerning, fallback fonts), each glyph then placed
-    /// on the arc in visual order at its centre, hOffset + x + advance / 2 (Skia's
-    /// drawLayoutOnPath), turned to the tangent there and drawn in its run's own font. As
+    /// the whole label (bidi, joining, ligatures, kerning, fallback fonts) with hinted advances,
+    /// each glyph then placed on the arc in visual order at its centre, hOffset + x + advance / 2
+    /// (Skia's drawLayoutOnPath), turned to the tangent there and drawn in its run's own font. As
     /// Android draws the run as one blob, its shadow is cast once under all of it.
     public func drawTextOnArc(_ text: String, cx: Double, cy: Double, radius: Double, startAngle: Double,
                               clockwise: Bool, vOffset: Double, _ paint: Paint) {
@@ -352,69 +361,95 @@ public final class CGCanvas: Canvas {
         let halfSpacing = (letterSpacePixels(paint) * 0.5).rounded(.down) / unitPixels
         var placed: [(font: CTFont, glyph: CGGlyph, x: Double, y: Double, rotation: Double, left: Double,
                       rise: Double)] = []
-        for run in CTLineGetGlyphRuns(line) as! [CTRun] {
-            let count = CTRunGetGlyphCount(run)
-            guard count > 0 else { continue }
-            // The run's own font: a fallback font where the label's font has no glyph.
-            let attributes = CTRunGetAttributes(run) as NSDictionary
-            let font: CTFont
-            if let value = attributes[kCTFontAttributeName as String] {
-                font = value as! CTFont
-            } else {
-                font = fonts.font(paint.font, paint.textSize)
-            }
-            var glyphs = [CGGlyph](repeating: 0, count: count)
-            var positions = [CGPoint](repeating: .zero, count: count)
-            var advances = [CGSize](repeating: .zero, count: count)
-            let all = CFRange(location: 0, length: 0)
-            CTRunGetGlyphs(run, all, &glyphs)
-            CTRunGetPositions(run, all, &positions)
-            CTRunGetAdvances(run, all, &advances)
-            for index in 0..<count {
+        for run in line.runs {
+            for index in run.glyphs.indices {
                 // Positions are along the line, left to right whatever the run's direction.
-                let halfWidth = Double(advances[index].width) / 2
-                let centre = Double(positions[index].x) + halfSpacing + halfWidth
+                let halfWidth = run.advances[index] / 2
+                let centre = Double(run.positions[index].x) + halfSpacing + halfWidth
                 let angle = startAngle + direction * centre / radius * 180 / .pi
                 let a = angle * .pi / 180
-                placed.append((font, glyphs[index], cx + cos(a) * radius, cy + sin(a) * radius,
-                                angle + direction * 90, -halfWidth, Double(positions[index].y)))
+                placed.append((run.font, run.glyphs[index], cx + cos(a) * radius, cy + sin(a) * radius,
+                               angle + direction * 90, -halfWidth, Double(run.positions[index].y)))
             }
         }
         context.saveGState()
         let hostTextMatrix = context.textMatrix
-        let shadowed = paint.shadow.map { $0.radius > 0 } ?? false
-        drawWithShadow(paint) { argb in
-            // With a shadow the glyphs go into one transparency layer, which casts the shadow
-            // once as it is composited: no glyph's shadow falls across its neighbour.
-            if shadowed { context.beginTransparencyLayer(auxiliaryInfo: nil) }
-            let color = CGCanvas.cgColor(argb)
-            context.setFillColor(color)
-            if paint.style == .stroke {
-                applyStroke(paint)
-                context.setStrokeColor(color)
-                context.setTextDrawingMode(.stroke)
-            } else {
-                context.setTextDrawingMode(.fill)
-            }
-            // Glyphs are y-up; the text matrix flips them upright in this y-down space (see
-            // showLine). Each glyph's origin is reached through the CTM, so it is drawn at (0, 0),
-            // where text space and user space agree.
-            context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
+        let shadow = paint.shadow.flatMap { $0.radius > 0 ? $0 : nil }
+        let paintAlpha = paint.alpha
+        // drawWithShadow's two branches: the paint casts its own shadow in place, or (a paint more
+        // transparent than its shadow) an opaque copy casts it from off the canvas.
+        let castsInPlace = shadow.map { paintAlpha == 255 || (paintAlpha > 0 && Colors.alpha($0.color) <= paintAlpha) } ?? true
+        if let shadow, !castsInPlace {
+            // A transparency layer is bounded by the clip, so glyphs drawn off the canvas inside
+            // one would leave it empty and cast nothing. The shadow comes instead from one path of
+            // every glyph's outline, filled (or stroked) once off the canvas: one shadow for the
+            // whole run, as the layer gives in place, not one per glyph darkening where they meet.
+            let outline = CGMutablePath()
             for glyph in placed {
-                context.saveGState()
-                context.translateBy(x: CGFloat(glyph.x), y: CGFloat(glyph.y))
-                context.rotate(by: CGFloat(glyph.rotation * .pi / 180))
-                // Core Text's y is up: a raised glyph (a mark) sits above the baseline.
-                context.translateBy(x: CGFloat(glyph.left), y: CGFloat(vOffset - glyph.rise))
-                var id = glyph.glyph
-                var origin = CGPoint.zero
-                CTFontDrawGlyphs(glyph.font, &id, &origin, 1, context)
-                context.restoreGState()
+                guard let path = CTFontCreatePathForGlyph(glyph.font, glyph.glyph, nil) else { continue }
+                // The CTM steps drawArcGlyphs takes, then the text matrix's flip of the y-up glyph.
+                let transform = CGAffineTransform(translationX: CGFloat(glyph.x), y: CGFloat(glyph.y))
+                    .rotated(by: CGFloat(glyph.rotation * .pi / 180))
+                    .translatedBy(x: CGFloat(glyph.left), y: CGFloat(vOffset - glyph.rise))
+                    .scaledBy(x: 1, y: -1)
+                outline.addPath(path, transform: transform)
             }
-            if shadowed { context.endTransparencyLayer() }
+            drawShadowOnly(shadow) {
+                let color = CGCanvas.cgColor(paint.color | 0xFF00_0000)
+                context.beginPath()
+                context.addPath(outline)
+                if paint.style == .stroke {
+                    applyStroke(paint)
+                    context.setStrokeColor(color)
+                    context.strokePath()
+                } else {
+                    context.setFillColor(color)
+                    context.fillPath(using: .winding)
+                }
+            }
+            clearShadow()
+            if paintAlpha > 0 { drawArcGlyphs(placed, vOffset, paint, paint.color) }
+        } else {
+            drawWithShadow(paint) { argb in
+                // With a shadow the glyphs go into one transparency layer, which casts the shadow
+                // once as it is composited: no glyph's shadow falls across its neighbour.
+                if shadow != nil { context.beginTransparencyLayer(auxiliaryInfo: nil) }
+                drawArcGlyphs(placed, vOffset, paint, argb)
+                if shadow != nil { context.endTransparencyLayer() }
+            }
         }
         context.textMatrix = hostTextMatrix
         context.restoreGState()
+    }
+
+    /// Draws each placed glyph of drawTextOnArc in [argb], turned to its tangent.
+    private func drawArcGlyphs(_ placed: [(font: CTFont, glyph: CGGlyph, x: Double, y: Double, rotation: Double,
+                                           left: Double, rise: Double)],
+                               _ vOffset: Double, _ paint: Paint, _ argb: ARGB) {
+        let color = CGCanvas.cgColor(argb)
+        context.setFillColor(color)
+        if paint.style == .stroke {
+            applyStroke(paint)
+            context.setStrokeColor(color)
+            context.setTextDrawingMode(.stroke)
+        } else {
+            context.setTextDrawingMode(.fill)
+        }
+        // Glyphs are y-up; the text matrix flips them upright in this y-down space (see
+        // showLine). Each glyph's origin is reached through the CTM, so it is drawn at (0, 0),
+        // where text space and user space agree.
+        context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
+        for glyph in placed {
+            context.saveGState()
+            context.translateBy(x: CGFloat(glyph.x), y: CGFloat(glyph.y))
+            context.rotate(by: CGFloat(glyph.rotation * .pi / 180))
+            // Core Text's y is up: a raised glyph (a mark) sits above the baseline.
+            context.translateBy(x: CGFloat(glyph.left), y: CGFloat(vOffset - glyph.rise))
+            var id = glyph.glyph
+            var origin = CGPoint.zero
+            CTFontDrawGlyphs(glyph.font, &id, &origin, 1, context)
+            context.restoreGState()
+        }
     }
 
     /// Paint.measureText: the advance (letter spacing included) rounded up to a whole Android
@@ -423,12 +458,12 @@ public final class CGCanvas: Canvas {
         (textAdvance(text, paint) * unitPixels).rounded(.up) / unitPixels
     }
 
-    /// The typographic advance of the line, letter spacing included, unrounded (Minikin's layout
-    /// width). Core Text's glyph advances are not hinted to whole pixels as Android's are, so
-    /// this approximates Android's rather than matching it exactly.
+    /// The advance of the line, letter spacing included, unrounded (Minikin's layout width): Core
+    /// Text's shaping with each glyph's advance hinted to a whole Android pixel, as FreeType's
+    /// are (see HintedLine).
     public func textAdvance(_ text: String, _ paint: Paint) -> Double {
         guard !text.isEmpty, paint.textSize > 0 else { return 0 }
-        return CTLineGetTypographicBounds(layoutLine(text, paint), nil, nil, nil)
+        return layoutLine(text, paint).width
     }
 
     /// Core Text reports the ascent above the baseline as a positive distance; Android's is
@@ -652,6 +687,81 @@ final class CGImageCache: @unchecked Sendable {
     }
 }
 
+// MARK: - Hinted lines
+
+/// A Core Text line as Minikin lays out the same text: Core Text's shaping (runs and fallback
+/// fonts, glyphs, GPOS kerning, the letter spacing as its kern), with each glyph's advance hinted
+/// as FreeType hints Android's, its nominal advance rounded to a whole Android pixel before the
+/// kerning and spacing are added. Glyphs Core Text gives no advance (marks) keep none, as HarfBuzz
+/// zeroes theirs after hinting, and stay on the glyph they sit on.
+///
+/// Known approximation: FreeType's autohinter can move an advance a pixel beyond plain rounding;
+/// SVGFonts has the same limit.
+struct HintedLine {
+    struct Run {
+        /// The run's own font: a fallback font where the label's font has no glyph.
+        let font: CTFont
+        let glyphs: [CGGlyph]
+        /// Glyph origins from the line's start, in Core Text's y-up text space: its x moved by
+        /// the rounding of every advance before the glyph, its y the rise above the baseline.
+        let positions: [CGPoint]
+        /// Hinted advances, kerning and letter spacing included.
+        let advances: [Double]
+    }
+
+    let runs: [Run]
+    /// The hinted advance of the whole line (Minikin's width).
+    let width: Double
+
+    /// [line]'s glyphs with advances rounded at [unitPixels] device pixels per canvas unit (before
+    /// any Canvas transform, as Minikin rounds at the paint's size, not the device matrix).
+    init(_ line: CTLine, unitPixels: Double, fallback: CTFont) {
+        var runs: [Run] = []
+        // The rounding of every advance so far, and where it stood before the last glyph that
+        // advances (a mark stays with that glyph rather than taking its correction).
+        var correction = 0.0
+        var correctionAtBase = 0.0
+        for run in CTLineGetGlyphRuns(line) as! [CTRun] {
+            let count = CTRunGetGlyphCount(run)
+            guard count > 0 else { continue }
+            let attributes = CTRunGetAttributes(run) as NSDictionary
+            let font: CTFont
+            if let value = attributes[kCTFontAttributeName as String] {
+                font = value as! CTFont
+            } else {
+                font = fallback
+            }
+            var glyphs = [CGGlyph](repeating: 0, count: count)
+            var positions = [CGPoint](repeating: .zero, count: count)
+            var shaped = [CGSize](repeating: .zero, count: count)
+            var nominal = [CGSize](repeating: .zero, count: count)
+            let all = CFRange(location: 0, length: 0)
+            CTRunGetGlyphs(run, all, &glyphs)
+            CTRunGetPositions(run, all, &positions)
+            CTRunGetAdvances(run, all, &shaped)
+            _ = CTFontGetAdvancesForGlyphs(font, .horizontal, glyphs, &nominal, count)
+            var advances = [Double](repeating: 0, count: count)
+            // Positions run along the line, left to right, in visual order.
+            for index in 0..<count {
+                let advance = Double(shaped[index].width)
+                if advance == 0 {
+                    positions[index].x += CGFloat(correctionAtBase)
+                    continue
+                }
+                correctionAtBase = correction
+                positions[index].x += CGFloat(correction)
+                let n = Double(nominal[index].width)
+                let hinted = (n * unitPixels + 0.5).rounded(.down) / unitPixels
+                advances[index] = advance + hinted - n
+                correction += hinted - n
+            }
+            runs.append(Run(font: font, glyphs: glyphs, positions: positions, advances: advances))
+        }
+        self.runs = runs
+        width = CTLineGetTypographicBounds(line, nil, nil, nil) + correction
+    }
+}
+
 // MARK: - Fonts
 
 /// The fonts CGCanvas draws with: Sundial Condensed (bundled with the app) for the
@@ -679,6 +789,13 @@ public final class FontLibrary: @unchecked Sendable {
         let size: Double
         /// The kern in canvas units: the letter spacing rounded at the canvas's pixel density.
         let kern: Double
+        /// Whether the optional ligatures are on (see FontLibrary.ligaturesOn).
+        let ligatures: Bool
+    }
+
+    private struct HintedKey: Hashable {
+        let line: LineKey
+        let unitPixels: Double
     }
 
     private let condensedURL: URL?
@@ -687,6 +804,7 @@ public final class FontLibrary: @unchecked Sendable {
     private var condensedAvailable = false
     private var fonts: [FontKey: CTFont] = [:]
     private var lines: [LineKey: CTLine] = [:]
+    private var hintedLines: [HintedKey: HintedLine] = [:]
 
     public init(condensedURL: URL?) {
         self.condensedURL = condensedURL
@@ -709,12 +827,17 @@ public final class FontLibrary: @unchecked Sendable {
         return font
     }
 
+    /// Minikin turns off the optional ligatures ('liga' and 'clig') when the letter spacing, in
+    /// ems as the paint holds it, exceeds 0.03.
+    static func ligaturesOn(_ paint: Paint) -> Bool { abs(paint.letterSpacing) <= 0.03 }
+
     /// [text] laid out in the paint's font and size, with [kern] canvas units after every
     /// character (kCTKernAttributeName): the paint's letter spacing, letterSpacing × textSize,
     /// rounded as CGCanvas rounds it to whole pixels. Its colour comes from the context when it is
     /// drawn (kCTForegroundColorFromContextAttributeName), so it is not part of the key.
     public func line(_ text: String, _ paint: Paint, kern: Double) -> CTLine {
-        let key = LineKey(text: text, face: paint.font, size: paint.textSize, kern: kern)
+        let ligatures = FontLibrary.ligaturesOn(paint)
+        let key = LineKey(text: text, face: paint.font, size: paint.textSize, kern: kern, ligatures: ligatures)
         lock.lock()
         let cached = lines[key]
         lock.unlock()
@@ -726,6 +849,10 @@ public final class FontLibrary: @unchecked Sendable {
         if kern != 0 {
             attributes[NSAttributedString.Key(kCTKernAttributeName as String)] = kern
         }
+        if !ligatures {
+            // Only the ligatures the script needs (0), as Minikin keeps only the required ones.
+            attributes[NSAttributedString.Key(kCTLigatureAttributeName as String)] = 0
+        }
         let string = NSAttributedString(string: text, attributes: attributes)
         let line = CTLineCreateWithAttributedString(string as CFAttributedString)
         lock.lock()
@@ -733,6 +860,24 @@ public final class FontLibrary: @unchecked Sendable {
         lines[key] = line
         lock.unlock()
         return line
+    }
+
+    /// line(_:_:kern:) with its advances hinted at [unitPixels] device pixels per canvas unit.
+    func hintedLine(_ text: String, _ paint: Paint, kern: Double, unitPixels: Double) -> HintedLine {
+        let key = HintedKey(line: LineKey(text: text, face: paint.font, size: paint.textSize, kern: kern,
+                                          ligatures: FontLibrary.ligaturesOn(paint)),
+                            unitPixels: unitPixels)
+        lock.lock()
+        let cached = hintedLines[key]
+        lock.unlock()
+        if let cached { return cached }
+        let hinted = HintedLine(line(text, paint, kern: kern), unitPixels: unitPixels,
+                                fallback: font(paint.font, paint.textSize))
+        lock.lock()
+        if hintedLines.count >= 512 { hintedLines.removeAll() }
+        hintedLines[key] = hinted
+        lock.unlock()
+        return hinted
     }
 
     /// Sundial Condensed, registered for this process from the bundled TTF on first use and then looked up

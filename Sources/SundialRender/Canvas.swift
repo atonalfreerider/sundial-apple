@@ -144,11 +144,18 @@ public struct Path: Sendable {
 
     /// Adds [sweepAngle] degrees of the ellipse in [oval], from [startAngle], as a new contour
     /// (Path.addArc). Positive sweeps run clockwise on screen.
+    ///
+    /// Unlike SkPath::addArc it has no guard for an empty oval or a zero sweep, and a sweep of
+    /// ±360 or more stays an arc rather than becoming an oval (see arcTo).
     public mutating func addArc(_ oval: Rect, _ startAngle: Double, _ sweepAngle: Double) {
         arcTo(oval, startAngle, sweepAngle, forceMoveTo: true)
     }
 
     /// Path.arcTo: joins the arc to the current point with a line unless [forceMoveTo].
+    ///
+    /// Unlike SkPath::arcTo, which works from the start and stop unit vectors, it does not reduce
+    /// the sweep modulo 360 (a sweep of 360 is a full turn here, a lone point in Skia; addOval
+    /// depends on that) and it does not reject a negative-size oval (it is drawn mirrored).
     public mutating func arcTo(_ oval: Rect, _ startAngle: Double, _ sweepAngle: Double, forceMoveTo: Bool) {
         let cx = oval.centerX, cy = oval.centerY, rx = oval.width / 2, ry = oval.height / 2
         func at(_ degrees: Double) -> Point {
@@ -445,6 +452,15 @@ public extension Canvas {
 
     /// Canvas.drawArc. With [useCenter] the arc is closed through the centre (a wedge).
     func drawArc(_ oval: Rect, _ startAngle: Double, _ sweepAngle: Double, _ useCenter: Bool, _ paint: Paint) {
+        // HWUI's SkiaCanvas::drawArc: a sweep of a full turn or more is drawn as the whole oval
+        // (SkCanvas::drawOval sorts the rect), and useCenter is ignored.
+        if abs(sweepAngle) >= 360 {
+            drawOval(Rect(min(oval.left, oval.right), min(oval.top, oval.bottom),
+                          max(oval.left, oval.right), max(oval.top, oval.bottom)), paint)
+            return
+        }
+        // SkCanvas::drawArc: nothing for an empty (zero or negative size) oval or a zero sweep.
+        guard oval.left < oval.right, oval.top < oval.bottom, sweepAngle != 0 else { return }
         var path = Path()
         if useCenter {
             path.moveTo(oval.centerX, oval.centerY)

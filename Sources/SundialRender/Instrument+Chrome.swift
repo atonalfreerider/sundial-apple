@@ -163,8 +163,10 @@ extension Instrument {
         let lineHeight = canvas.fontMetrics(bodyPaint).fontSpacing + 2 * density
         let maxLines = max(Int(availableBodyHeight / lineHeight), 1)
         // StaticLayout: centred, no font padding, 2dp extra line spacing, ellipsized at maxLines.
-        // Its width is an Int, so the wrap width is truncated as on Android.
-        let layout = canvas.layoutText(value, bodyPaint, width: Double(Int(bounds.width - 38 * density)),
+        // Its width is an Int of view pixels, so the wrap width is truncated to whole device pixels
+        // as on Android (the chrome draws untransformed, so pixelsPerUnit is the canvas's scale).
+        let wrapWidth = Double(Int((bounds.width - 38 * density) * pixelsPerUnit)) / pixelsPerUnit
+        let layout = canvas.layoutText(value, bodyPaint, width: wrapWidth,
                                        lineSpacingExtra: 2 * density, maxLines: maxLines, alignment: .center)
         var card = Paint()
         card.shader = .radial(center: Point(bounds.centerX, bounds.top), radius: bounds.width * 0.78,

@@ -170,27 +170,37 @@ public final class SVGCanvas: Canvas {
         case .right: alignment = 1
         }
         if paint.font == .sundialCondensed && fonts.condensed != nil { usesCondensed = true }
-        let advance = fonts.advance(text, paint.font, size: size, letterSpacing: paint.letterSpacing)
+        let layout = fonts.layout(text, paint.font, size: size, letterSpacing: paint.letterSpacing)
+        let advance = layout.advance
         let left = x - advance * alignment
-        let origins = fonts.origins(text, paint.font, size: size, letterSpacing: paint.letterSpacing)
+        let origins = layout.origins
         let characters = Array(text)
         // Chrome honours xml:space only on the <text> itself, not inherited from the root, and
         // would otherwise collapse runs of spaces.
         var attributes = " xml:space=\"preserve\""
         let content: String
-        if characters.allSatisfy({ $0.unicodeScalars.count == 1 }) {
+        if characters.allSatisfy({ $0.unicodeScalars.count == 1 }) && !layout.inLigature.contains(true) {
             // One x per code point, which is one per character here.
             let xs = origins.map { SVGCanvas.number(left + $0) }.joined(separator: " ")
             attributes += " x=\"\(xs)\" y=\"\(SVGCanvas.number(y))\""
             content = SVGCanvas.escape(text)
         } else {
             // A renderer applies x values per code point, so a list would split clusters (a
-            // variation selector, a joiner, a combining mark): one <tspan> per character instead,
-            // with nothing between them.
+            // variation selector, a joiner, a combining mark) and ligatures (Chrome draws the
+            // parts of one whose characters are placed apart, or on top of each other, as
+            // separate glyphs): one <tspan> per cluster instead, a Character or the Characters
+            // of a ligature, at its origin, with nothing between them.
             attributes += " x=\"\(SVGCanvas.number(left))\" y=\"\(SVGCanvas.number(y))\""
             var spans = ""
-            for (character, origin) in zip(characters, origins) where !character.isWhitespace {
-                spans += "<tspan x=\"\(SVGCanvas.number(left + origin))\">\(SVGCanvas.escape(String(character)))</tspan>"
+            var start = 0
+            while start < characters.count {
+                var end = start + 1
+                while end < characters.count && layout.inLigature[end] { end += 1 }
+                if !(end == start + 1 && characters[start].isWhitespace) {
+                    let cluster = SVGCanvas.escape(String(characters[start..<end]))
+                    spans += "<tspan x=\"\(SVGCanvas.number(left + origins[start]))\">\(cluster)</tspan>"
+                }
+                start = end
             }
             content = spans
         }

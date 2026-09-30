@@ -192,6 +192,26 @@ final class CivilTimeTests: XCTestCase {
         XCTAssertEqual(CivilFormat.format(LocalDate(1, 1, 1).atStartOfDay(tokyo), "MMM d  yyyy", tokyo), "Jan 1  0001")
     }
 
+    func testFiveDigitYearsAreSignedAsJavaTimeSignsThem() {
+        // 'yyyy' is SignStyle.EXCEEDS_PAD in java.time: a year past 9999 gets a '+'.
+        XCTAssertEqual(CivilFormat.format(LocalDate(10_000, 1, 1), "MMM d  yyyy"), "Jan 1  +10000")
+        XCTAssertEqual(CivilFormat.format(LocalDate(10_000, 1, 1), "EEEE, MMMM d, yyyy, h:mm a"),
+                       "Saturday, January 1, +10000, 12:00 AM")
+        XCTAssertEqual(CivilFormat.format(LocalDate(9_999, 12, 31), "MMM d  yyyy"), "Dec 31  9999")
+        // Quoted letters are text, and a shorter field is never signed.
+        XCTAssertEqual(CivilFormat.format(LocalDate(12_345, 6, 7), "'yyyy' yyy"), "yyyy 12345")
+        XCTAssertEqual(CivilFormat.format(LocalDate(12_345, 6, 7), "yyyyy"), "12345")
+        XCTAssertEqual(CivilFormat.signedYearPattern("'it''s' yyyy", 10_000), "'it''s' +yyyy")
+    }
+
+    func testParseRejectsYearsBeyondJavaTimeRange() {
+        XCTAssertEqual(LocalDate.parse("+999999999-12-31"), LocalDate(999_999_999, 12, 31))
+        XCTAssertEqual(LocalDate.parse("-999999999-01-01"), LocalDate(-999_999_999, 1, 1))
+        XCTAssertNil(LocalDate.parse("+1000000000-01-01"))
+        XCTAssertNil(LocalDate.parse("-1000000000-01-01"))
+        XCTAssertNil(LocalDate.parse("+9999999999-01-01"))
+    }
+
     func testStartOfDayInAGapThatCrossesMidnightIsTheTransition() {
         // Toronto, 1919-03-31: clocks went from 23:30 (-05:00) to 00:30 (-04:00), so local
         // midnight never happened; java.time starts the day at the transition.

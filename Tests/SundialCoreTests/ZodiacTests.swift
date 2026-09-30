@@ -27,6 +27,9 @@ final class ZodiacTests: XCTestCase {
         XCTAssertEqual(Zodiac.Sign.taurus, Zodiac.signForLongitude(30.0))
         XCTAssertEqual(Zodiac.Sign.pisces, Zodiac.signForLongitude(359.999))
         XCTAssertEqual(Zodiac.Sign.pisces, Zodiac.signForLongitude(-0.001))
+        // Kotlin's toInt() maps NaN to 0: a non-finite longitude is Aries, not a crash.
+        XCTAssertEqual(Zodiac.Sign.aries, Zodiac.signForLongitude(.nan))
+        XCTAssertEqual(Zodiac.Sign.aries, Zodiac.signForLongitude(.infinity))
     }
 
     func testGeocentricPlacementsAreFiniteAndExcludeEarth() {

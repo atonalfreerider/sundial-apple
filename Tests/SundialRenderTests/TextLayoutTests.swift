@@ -41,7 +41,14 @@ private final class FixedWidthCanvas: Canvas {
     }
     func drawImage(_ image: PixelImage, _ rect: Rect, alpha: Double) {}
     func drawColor(_ color: ARGB) {}
-    func textAdvance(_ text: String, _ paint: Paint) -> Double { Double(text.count) * unit }
+    /// Pair kerning, by the two characters, added to the width of the pair's first.
+    var kerning: [String: Double] = [:]
+    func textAdvance(_ text: String, _ paint: Paint) -> Double {
+        let characters = Array(text)
+        var total = Double(characters.count) * unit
+        for (a, b) in zip(characters, characters.dropFirst()) { total += kerning[String([a, b])] ?? 0 }
+        return total
+    }
     /// Paint.measureText rounds up.
     func measureText(_ text: String, _ paint: Paint) -> Double { textAdvance(text, paint).rounded(.up) }
     func fontMetrics(_ paint: Paint) -> FontMetrics { metrics }
@@ -80,6 +87,46 @@ final class TextLayoutTests: XCTestCase {
     func testNoBreakAfterAHyphenWithoutHyphenation() {
         XCTAssertEqual(lines("Team-building day", 80), ["Team-bui", "lding", "day"])
         XCTAssertEqual(lines("and/or so", 50), ["and/", "or so"])
+    }
+
+    func testNoBreakBeforeClosingPunctuationEvenAfterSpaces() {
+        // ICU's LB13: × CL, CP, EX, SY (and IS, LB15d) even after spaces.
+        XCTAssertEqual(lines("Sprint review / demo", 140), ["Sprint", "review / demo"])
+        XCTAssertEqual(lines("Big Réunion : budget", 115), ["Big", "Réunion :", "budget"])
+        let breaks = lineBreakOpportunities(Array("Is it done ?"))
+        XCTAssertEqual(breaks.indices.filter { breaks[$0] }, [3, 6, 12])
+        // LB15c: a break before "." that starts a number; LB14: none after an opening bracket.
+        let number = lineBreakOpportunities(Array("add .5 kg"))
+        XCTAssertEqual(number.indices.filter { number[$0] }, [4, 7, 9])
+        let bracket = lineBreakOpportunities(Array("( .5"))
+        XCTAssertEqual(bracket.indices.filter { bracket[$0] }, [4])
+    }
+
+    func testParagraphsEndAtTheLineFeedScalar() {
+        // "\r\n" is one Character in Swift; Android splits at the '\n' char and keeps the CR.
+        XCTAssertEqual(lines("Team sync\r\nRoom 4", 400), ["Team sync\r", "Room 4"])
+        XCTAssertEqual(lines("x\r\n", 400), ["x\r", ""])
+    }
+
+    func testTrailingSpacesHangOnlyWhereTheParagraphWraps() {
+        // Layout.getLineVisibleEnd keeps them on the block's last line and before a '\n'.
+        XCTAssertEqual(lines("ab  \ncd  ", 400), ["ab  ", "cd  "])
+        XCTAssertEqual(lines("ab cd ", 25), ["ab", "cd "])
+        XCTAssertEqual(lines("abc \n", 40, maxLines: 1), ["abc "])
+        XCTAssertEqual(lines("abc de ", 40, maxLines: 1), ["abc\u{2026}"])
+        // So a centred "Dentist " is centred on its width with the space: (200 − 80) >> 1.
+        let canvas = FixedWidthCanvas()
+        canvas.drawTextBlock(canvas.layoutText("Dentist ", Paint(), width: 200), 0, 0)
+        XCTAssertEqual(canvas.drawn.map(\.x), [60])
+    }
+
+    func testEllipsisCutCountsTheKerningWithTheNextCharacter() {
+        // A and V kern by −4, which Android gives to the A: the width through "WA" is 16 inside
+        // "WAVE", so it fits beside the ellipsis in 28 (18 left), though "WA" alone is 20.
+        let canvas = FixedWidthCanvas()
+        canvas.kerning = ["AV": -4]
+        XCTAssertEqual(canvas.ellipsize("WAVE", Paint(), 28), "WA\u{2026}")
+        XCTAssertEqual(canvas.layoutText("WAVE\nX", Paint(), width: 28, maxLines: 1).lines, ["WA\u{2026}"])
     }
 
     func testTrailingNewlineForcesNoEllipsis() {

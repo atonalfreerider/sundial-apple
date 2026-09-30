@@ -81,6 +81,34 @@ final class SVGCanvasTests: XCTestCase {
         XCTAssertEqual(kerning("oo"), 0)
     }
 
+    func testSubstitutionsAndLigaturesMatchHarfBuzz() throws {
+        let fonts = SVGFonts(condensed: try TrueTypeFont(contentsOf: assets.appendingPathComponent("sundial_condensed.ttf"),
+                                                         family: SVGFonts.condensedFamily))
+        // hb_shape totals with the default features ('rvrn' turns "$" into its bracket form, and
+        // 'liga' makes ff, ffi, ffl, fi and fl), in font units: at 1000 px, the font's units per
+        // em, the hinted advances are the font's own.
+        let harfBuzz: [(String, Double)] = [("office fifty waffle", 5864), ("Office Coffee", 4763),
+                                            ("Staff offsite", 4108), ("AVA $5 To", 3619), ("Wafflé fl", 2922),
+                                            ("fjord ff", 2281)]
+        for (text, total) in harfBuzz {
+            XCTAssertEqual(fonts.advance(text, .sundialCondensed, size: 1000, letterSpacing: 0), total, text)
+        }
+        // Minikin turns the ligatures off under letter spacing: HarfBuzz with -liga gives 5899,
+        // and each of the 19 characters then adds 100.
+        XCTAssertEqual(fonts.advance("office fifty waffle", .sundialCondensed, size: 1000, letterSpacing: 0.1), 5899 + 1900)
+        // The ligature's characters share its origin; its whole advance (685) is the first's.
+        XCTAssertEqual(fonts.origins("office", .sundialCondensed, size: 1000, letterSpacing: 0), [0, 463, 463, 463, 1148, 1579])
+        // The SVG keeps a ligature's characters in one <tspan>, so the renderer draws the ligature
+        // (at 10 px the hinted advances are whole pixels: o 5, ffi 7).
+        let canvas = SVGCanvas(width: 100, height: 100, fonts: fonts)
+        var paint = Paint()
+        paint.font = .sundialCondensed
+        paint.textSize = 10
+        canvas.drawText("office", 0, 50, paint)
+        XCTAssertTrue(canvas.svgString().contains("<tspan x=\"5\">ffi</tspan><tspan x=\"12\">c</tspan>"),
+                      canvas.svgString())
+    }
+
     func testMeasureTextAddsLetterSpacingAndRoundsUp() throws {
         let fonts = SVGFonts(condensed: try TrueTypeFont(contentsOf: assets.appendingPathComponent("sundial_condensed.ttf"),
                                                          family: SVGFonts.condensedFamily))

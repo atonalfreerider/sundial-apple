@@ -69,7 +69,7 @@ public enum Zodiac {
     }
 
     public static func signForLongitude(_ longitudeDegrees: Double) -> Sign {
-        Sign.allCases[min(max(Int(Astronomy.normalizeDegrees(longitudeDegrees) / 30.0), 0), 11)]
+        Sign.allCases[min(max((Astronomy.normalizeDegrees(longitudeDegrees) / 30.0).toInt(), 0), 11)]
     }
 
     public static func seasonFor(_ date: LocalDate, _ northernHemisphere: Bool) -> Season {

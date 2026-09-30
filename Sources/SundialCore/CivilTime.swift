@@ -131,8 +131,8 @@ public struct LocalDate: Hashable, Comparable, Sendable, CustomStringConvertible
     }
 
     /// Parses ISO yyyy-MM-dd (LocalDate.parse, strict ISO_LOCAL_DATE): a year of four ASCII
-    /// digits, or more with a sign ('+' only beyond four digits; not "-0000"); nil for anything
-    /// else or an impossible date.
+    /// digits, or more with a sign ('+' only beyond four digits; not "-0000"), within
+    /// ±999,999,999; nil for anything else or an impossible date.
     public static func parse(_ text: String) -> LocalDate? {
         var body = Substring(text)
         var sign: Character?
@@ -152,6 +152,8 @@ public struct LocalDate: Hashable, Comparable, Sendable, CustomStringConvertible
         guard let magnitude = Int(parts[0]), let m = Int(parts[1]), let d = Int(parts[2]),
               !(sign == "-" && magnitude == 0) else { return nil }
         let y = sign == "-" ? -magnitude : magnitude
+        // java.time reads up to ten digits, then rejects a year outside Year.MIN_VALUE...MAX_VALUE.
+        guard (-999_999_999...999_999_999).contains(y) else { return nil }
         guard (1...12).contains(m), d >= 1, d <= lengthOfMonth(y, m) else { return nil }
         return LocalDate(y, m, d)
     }
@@ -266,6 +268,12 @@ public enum CivilFormat {
     private static let lock = NSLock()
 
     public static func format(_ instant: Date, _ pattern: String, _ zone: TimeZone) -> String {
+        // Only a year of five or more digits can need a sign, and only a 'yyyy' run can give one.
+        var pattern = pattern
+        if pattern.contains("yyyy") {
+            let year = ZonedDateTime(instant, zone).year
+            pattern = signedYearPattern(pattern, year >= 1 ? year : 1 - year)
+        }
         lock.lock()
         defer { lock.unlock() }
         let key = pattern + "|" + zone.identifier
@@ -285,6 +293,35 @@ public enum CivilFormat {
             cache[key] = formatter
         }
         return formatter.string(from: instant)
+    }
+
+    /// java.time prints a year field of four or more letters ('yyyy') with SignStyle.EXCEEDS_PAD:
+    /// a year of era with more digits than letters gets a '+' ("Jan 1  +10000"). ICU prints no
+    /// sign, so a literal '+' goes before each such run (outside quotes) of [pattern].
+    static func signedYearPattern(_ pattern: String, _ yearOfEra: Int) -> String {
+        guard yearOfEra >= 10_000 else { return pattern }
+        let digits = String(yearOfEra).count
+        let characters = Array(pattern)
+        var out = ""
+        var quoted = false
+        var index = 0
+        while index < characters.count {
+            let character = characters[index]
+            // '' (an escaped quote, inside or outside a literal) toggles twice: no change.
+            if character == "'" { quoted.toggle() }
+            if character == "y" && !quoted {
+                var end = index
+                while end < characters.count && characters[end] == "y" { end += 1 }
+                let letters = end - index
+                if letters >= 4 && digits > letters { out.append("+") }
+                out += String(repeating: "y", count: letters)
+                index = end
+                continue
+            }
+            out.append(character)
+            index += 1
+        }
+        return out
     }
 
     /// Formats a date without a zone (it is shown at its own midnight in UTC).

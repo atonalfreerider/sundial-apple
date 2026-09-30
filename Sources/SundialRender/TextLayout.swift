@@ -19,8 +19,10 @@ public struct TextBlock: Equatable, Sendable {
     /// Layout.Alignment: NORMAL, CENTER and OPPOSITE for left-to-right text.
     public enum Alignment: Equatable, Sendable { case left, center, right }
 
-    /// The visible lines, without the spaces that hang at their ends; when the text ran past
-    /// maxLines the last one ends in an ellipsis.
+    /// The visible lines, as Layout draws and measures them (getLineVisibleEnd): a line that ends
+    /// where the paragraph wraps drops the spaces that hang past its end, while the last line of a
+    /// paragraph (the block's last line, or one a '\n' ends) keeps them, so they count in its
+    /// centring. When the text ran past maxLines the last one ends in an ellipsis.
     public let lines: [String]
     public let paint: Paint
     /// The wrap width.
@@ -83,17 +85,30 @@ public extension Canvas {
     /// Line metrics are whole layout pixels (the canvas's pixel scale), as StaticLayout's are.
     func layoutText(_ text: String, _ paint: Paint, width: Double, lineSpacingExtra: Double = 0,
                     maxLines: Int = .max, alignment: TextBlock.Alignment = .center) -> TextBlock {
-        let paragraphs = text.split(separator: "\n", omittingEmptySubsequences: false).map { Array($0) }
+        // Paragraphs end at each '\n' char, as StaticLayout splits them: on the U+000A scalar, since
+        // Swift keeps "\r\n" together as one Character. The CR stays at the end of its paragraph,
+        // measured and drawn like any other character, as Android keeps it in the line.
+        let paragraphs = text.unicodeScalars.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { Array(String(String.UnicodeScalarView($0))) }
         var wrapped: [(paragraph: Int, range: Range<Int>)] = []
         for (index, paragraph) in paragraphs.enumerated() {
             for range in wrapParagraph(self, paragraph, paint, width) { wrapped.append((index, range)) }
         }
+        // Layout.getLineVisibleEnd(line, start, end, trailingSpaceAtLastLineIsVisible = true): the
+        // block's last line keeps its trailing spaces, and so does a line that a '\n' ends; only a
+        // line that ends where its paragraph wraps drops them.
+        func line(_ index: Int) -> String {
+            let entry = wrapped[index]
+            let characters = paragraphs[entry.paragraph][entry.range]
+            let endsParagraph = index == wrapped.count - 1 || wrapped[index + 1].paragraph != entry.paragraph
+            return endsParagraph ? String(characters) : visibleLine(characters)
+        }
         let visibleCount = max(maxLines, 1)
         var lines: [String] = []
         if wrapped.count <= visibleCount {
-            lines = wrapped.map { visibleLine(paragraphs[$0.paragraph][$0.range]) }
+            lines = wrapped.indices.map(line)
         } else {
-            lines = wrapped[..<(visibleCount - 1)].map { visibleLine(paragraphs[$0.paragraph][$0.range]) }
+            lines = (0..<(visibleCount - 1)).map(line)
             let last = wrapped[visibleCount - 1]
             let paragraph = paragraphs[last.paragraph]
             // Characters remain after this paragraph (StaticLayout's moreChars, endPos < bufEnd):
@@ -232,17 +247,30 @@ private func visibleLine(_ characters: ArraySlice<Character>) -> String {
     return String(characters[characters.startIndex..<end])
 }
 
-/// The most leading characters whose width is within [limit] (0 when none fit). Android adds
-/// unrounded widths until one overflows; widths only grow as characters are added, so a binary
-/// search finds the same cut with far fewer measurements.
+/// The most leading characters whose width is within [limit] (0 when none fit).
+///
+/// Android (MeasuredParagraph.breakText, StaticLayout.calculateEllipsis) adds each char's width,
+/// shaped in the context of the whole string, until one overflows. HarfBuzz gives the kerning
+/// with the next character to the earlier one, so the width of the first n characters is where
+/// the whole string starts character n: here the prefix through character n, less character n
+/// alone (the whole text's advance for n = count). Measuring each prefix on its own would leave
+/// out the kerning with the first character cut. A ligature is still split here, where Minikin
+/// gives its whole width to its first character (that needs per-character advances from the
+/// backend). Widths only grow as characters are added, so a binary search finds the cut with far
+/// fewer measurements than Android's linear scan.
 private func fittingPrefixCount(_ canvas: Canvas, _ characters: [Character], _ paint: Paint,
                                 _ limit: Double) -> Int {
     guard limit >= 0 else { return 0 }
+    let count = characters.count
+    func width(_ n: Int) -> Double {
+        if n == count { return canvas.textAdvance(String(characters), paint) }
+        return canvas.textAdvance(String(characters[...n]), paint) - canvas.textAdvance(String(characters[n]), paint)
+    }
     var low = 0
-    var high = characters.count
+    var high = count
     while low < high {
         let mid = (low + high + 1) / 2
-        if canvas.textAdvance(String(characters[..<mid]), paint) <= limit { low = mid } else { high = mid - 1 }
+        if width(mid) <= limit { low = mid } else { high = mid - 1 }
     }
     return low
 }
@@ -260,6 +288,15 @@ private struct BreakClass {
     var open = false
     /// No break before: CL, CP, EX, IS, SY, QU, NS, CJ, BA, HY, GL, IN and ZW.
     var noBreakBefore = false
+    /// CL, CP, EX, IS and SY: no break before them even after spaces (LB13, LB15d), unless the
+    /// spaces follow a ZW (LB8).
+    var closing = false
+    /// BK, CR, LF and NL: never a break before them (LB6).
+    var hardBreak = false
+    /// IS: after spaces, a break is allowed before it when a digit follows (LB15c).
+    var infixSeparator = false
+    /// NU, the decimal digits.
+    var digit = false
     /// No break after: OP, QU, GL, and the hyphens Minikin keeps whole without hyphenation.
     var noBreakAfter = false
     /// SY "/", IN "…", EX "?" "!" and the figure dash: break after when a letter follows.
@@ -289,8 +326,13 @@ private struct BreakClass {
         // Minikin's isLineBreakingHyphen and the soft hyphen: with hyphenation off, no break after.
         let hyphen = [0x2D, 0x58A, 0x5BE, 0x1400, 0x2010, 0x2013, 0x2027, 0x2E17, 0x2E40, 0xAD].contains(v)
         let nonStarter = BreakClass.isNonStarter(v)
+        hardBreak = [0x0A, 0x0B, 0x0C, 0x0D, 0x85, 0x2028, 0x2029].contains(v)
         noBreakBefore = close || exclamation || infix || solidus || quote || nonStarter || breakAfter || glue
-            || inseparable || zeroWidthSpace
+            || inseparable || zeroWidthSpace || hardBreak
+        closing = close || exclamation || infix || solidus
+        infixSeparator = infix
+        // Fullwidth digits are ID, not NU.
+        digit = category == .decimalNumber && !(0xFF10...0xFF19).contains(v)
         noBreakAfter = open || quote || glue || hyphen
         breakBeforeLetter = solidus || exclamation || v == 0x2026 || v == 0x2012
         ideograph = !nonStarter && BreakClass.isIdeographic(scalar)
@@ -324,8 +366,11 @@ private struct BreakClass {
 }
 
 /// Where a line may break inside a paragraph, as the ICU line breaker Minikin uses finds it and
-/// Minikin then filters it (a subset of UAX #14 that covers the app's text): element i says a
-/// line may start at character i. Besides the spaces, breaks fall on either side of an em dash
+/// Minikin then filters it (a subset of UAX #14, as of Unicode 15.1 / ICU 74, that covers the
+/// app's text): element i says a line may start at character i. Breaks fall after spaces, but
+/// not before closing punctuation, "!", "?", "/", ",", ".", ":" or ";" even after spaces
+/// (LB13, LB15d; except before "," "." ":" ";" followed by a digit, LB15c), nor after an opening
+/// bracket and its spaces (LB14). Besides the spaces, breaks fall on either side of an em dash
 /// (not between two, nor before closing punctuation), after "/", "…", "?" and "!" before a
 /// letter, and between ideographs; never after a hyphen, since hyphenation is off
 /// (HYPHENATION_FREQUENCY_NONE, the Builder's default, so Minikin drops those breaks).
@@ -342,12 +387,16 @@ func lineBreakOpportunities(_ characters: [Character]) -> [Bool] {
                 // The character before the run of spaces.
                 var j = i - 1
                 while j > 0 && classes[j - 1].space { j -= 1 }
-                if j > 0 {
-                    let before = classes[j - 1]
-                    if before.open { return false }            // OP SP* ×
-                    if before.dash && b.dash { return false }  // B2 SP* × B2
+                let before: BreakClass? = j > 0 ? classes[j - 1] : nil
+                if b.hardBreak || b.zeroWidthSpace { return false }  // × BK CR LF NL (LB6), × ZW (LB7)
+                if before?.zeroWidthSpace == true { return true }    // ZW SP* ÷ (LB8)
+                if before?.open == true { return false }             // OP SP* × (LB14)
+                if b.infixSeparator && i + 1 < classes.count && classes[i + 1].digit {
+                    return true                                      // SP ÷ IS NU (LB15c)
                 }
-                return true                                    // SP ÷
+                if b.closing { return false }                        // × CL CP EX IS SY (LB13, LB15d)
+                if before?.dash == true && b.dash { return false }   // B2 SP* × B2 (LB17)
+                return true                                          // SP ÷ (LB18)
             }
             if a.zeroWidthSpace { return true }
             if b.noBreakBefore || a.noBreakAfter { return false }
@@ -406,12 +455,14 @@ private func wrapParagraph(_ canvas: Canvas, _ characters: [Character], _ paint:
 /// StaticLayout.calculateEllipsis (END) for the last visible line, which holds the rest of its
 /// paragraph: as many characters as fit beside "…" followed by "…". The spaces before the cut
 /// stay, as Android keeps them. When the rest fits but more paragraphs follow ([forceEllipsis]),
-/// the ellipsis replaces the paragraph's newline.
+/// the ellipsis replaces the paragraph's newline. It is the layout's last line, so a line that is
+/// not ellipsized keeps its trailing spaces (Layout.getLineVisibleEnd), though whether it fits is
+/// decided without them, as the line breaker's width leaves them out.
 private func ellipsizedLastLine(_ canvas: Canvas, _ characters: [Character], _ paint: Paint, _ width: Double,
                                 forceEllipsis: Bool) -> String {
     let line = visibleLine(characters[...])
-    if canvas.textAdvance(line, paint) <= width && !forceEllipsis { return line }
+    if canvas.textAdvance(line, paint) <= width && !forceEllipsis { return String(characters) }
     let kept = fittingPrefixCount(canvas, characters, paint, width - canvas.measureText(ellipsisString, paint))
-    if kept == characters.count { return forceEllipsis ? String(characters) + ellipsisString : line }
+    if kept == characters.count { return forceEllipsis ? String(characters) + ellipsisString : String(characters) }
     return String(characters[..<kept]) + ellipsisString
 }

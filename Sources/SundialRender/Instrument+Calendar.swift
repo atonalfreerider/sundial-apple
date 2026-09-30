@@ -106,8 +106,10 @@ extension Instrument {
         titlePaint.color = instrumentColor
         titlePaint.textSize = 30 * screenDensity
         titlePaint.font = .sundialCondensed
-        // StaticLayout takes a whole-pixel width.
-        let titleLayout = canvas.layoutText(event.title, titlePaint, width: Double(Int(cardWidth - 2 * padding)),
+        // StaticLayout takes a width in whole view pixels: truncate in device pixels (the overlay
+        // draws untransformed, so pixelsPerUnit is the canvas's scale).
+        let wrapWidth = Double(Int((cardWidth - 2 * padding) * pixelsPerUnit)) / pixelsPerUnit
+        let titleLayout = canvas.layoutText(event.title, titlePaint, width: wrapWidth,
                                             maxLines: 3, alignment: .center)
         var timingPaint = text
         timingPaint.color = withAlpha(instrumentColor, 225)

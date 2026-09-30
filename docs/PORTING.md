@@ -59,7 +59,7 @@ them against the documented Apple APIs and syntax-check them with `swiftc -parse
 | `date.atStartOfDay(zone)` | `date.atStartOfDay(zone)` (a `Date`) |
 | `instant.atOffset(ZoneOffset.ofHours(12)).toLocalDate()` | `LocalDate.of(instant, .offset(seconds: 43_200))` |
 | `DateTimeFormatter.ofPattern(p)` + `format` | `CivilFormat.format(instant, p, zone)` |
-| `Duration.between(a, b).seconds` | `Int64(b.timeIntervalSince(a))` (truncates like Kotlin) |
+| `Duration.between(a, b).seconds` | `Int64(b.timeIntervalSince(a).rounded(.down))` (getSeconds floors, so a negative duration is not truncated) |
 | `plusSeconds / plusMillis / plusNanos` | `addingTimeInterval(seconds)` |
 | `RectF(l, t, r, b)` | `Rect(l, t, r, b)` |
 | `Path()` | `var path = Path()` (a struct) |

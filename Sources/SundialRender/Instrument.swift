@@ -351,7 +351,9 @@ public final class Instrument {
             canvas.save()
             if ambientBurnIn {
                 // Wander a few pixels each minute so no OLED pixel stays lit in one place.
-                let minute = Int((selectedInstant.timeIntervalSince1970 / 60).rounded(.down))
+                // Instant.epochSecond (floored) / 60 on a Long, which truncates toward zero: before
+                // 1970 that is not the floor of the minute.
+                let minute = Int(selectedInstant.epochSecond / 60)
                 canvas.translate(Double(minute % 5 - 2) * 2 * density, Double((minute / 5) % 5 - 2) * 2 * density)
             }
             let grey = ColorFilterCanvas(canvas, filter: .ambientGrey)

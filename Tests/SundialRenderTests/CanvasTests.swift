@@ -166,6 +166,44 @@ final class CanvasTests: XCTestCase {
         XCTAssertEqual(square.elements.count, 5)
     }
 
+    func testDrawArcFollowsHWUIForFullTurnsAndEmptyOvals() {
+        final class Recorder: Canvas {
+            var paths: [Path] = []
+            let width = 10.0, height = 10.0
+            var pixelScale: Double { 1 }
+            var saveCount: Int { 1 }
+            func save() -> Int { 1 }
+            func saveLayer(alpha: Double) -> Int { 1 }
+            func restore() {}
+            func restore(toCount: Int) {}
+            func translate(_ dx: Double, _ dy: Double) {}
+            func rotate(_ degrees: Double) {}
+            func scale(_ sx: Double, _ sy: Double) {}
+            func concat(_ transform: SundialRender.AffineTransform) {}
+            func clip(_ path: Path) {}
+            func drawPath(_ path: Path, _ paint: Paint) { paths.append(path) }
+            func drawText(_ text: String, _ x: Double, _ y: Double, _ paint: Paint) {}
+            func drawTextShadow(_ text: String, _ x: Double, _ y: Double, _ paint: Paint) {}
+            func drawImage(_ image: PixelImage, _ rect: Rect, alpha: Double) {}
+            func drawColor(_ color: ARGB) {}
+            func measureText(_ text: String, _ paint: Paint) -> Double { 0 }
+            func textAdvance(_ text: String, _ paint: Paint) -> Double { 0 }
+            func fontMetrics(_ paint: Paint) -> FontMetrics { FontMetrics(ascent: 0, descent: 0) }
+        }
+        let canvas = Recorder()
+        // Nothing for an empty or inverted oval, or a zero sweep.
+        canvas.drawArc(Rect(0, 0, 0, 10), 0, 90, false, Paint())
+        canvas.drawArc(Rect(10, 0, 0, 10), 0, 90, false, Paint())
+        canvas.drawArc(Rect(0, 0, 10, 10), 30, 0, true, Paint())
+        XCTAssertTrue(canvas.paths.isEmpty)
+        // A full turn or more is the closed oval, without the centre, even from an inverted rect.
+        canvas.drawArc(Rect(10, 10, 0, 0), 45, -400, true, Paint())
+        var oval = Path()
+        oval.addOval(Rect(0, 0, 10, 10))
+        XCTAssertEqual(canvas.paths.count, 1)
+        XCTAssertEqual(String(describing: canvas.paths[0].elements), String(describing: oval.elements))
+    }
+
     func testRewindResetsTheFillRule() {
         var path = Path()
         path.fillRule = .evenOdd
