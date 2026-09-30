@@ -113,7 +113,8 @@ The package's own tests run anywhere, including Linux: `swift test` at the repos
 
 The `Sideload` workflow (`.github/workflows/sideload.yml`, on every push to `main` or by hand)
 builds the iOS app for devices on a GitHub macOS runner and uploads it, unsigned and without the
-watch app, as `Sundial-sideload.ipa` in the `sideload-ipa` artifact:
+watch app or the App Group, as `Sundial-sideload.ipa` in the `sideload-ipa` artifact (the widgets
+show the default settings, not the app's):
 
 ```bash
 gh run download --repo atonalfreerider/sundial-apple --name sideload-ipa --dir build
