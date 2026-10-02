@@ -2,7 +2,7 @@
 
 The iOS app ships as one App Store product: `Sundial.app` (`com.metavirtuoso.sundial`) with its
 widget extension and the Apple Watch app embedded (the watch app carries its complications). It
-is version **3.0.0**, like the Android release; the build number starts at **1**. Building and
+is version **3.1.0**, like the Android release; the source build number is **2**. Building and
 running are in [`Apps/README.md`](../Apps/README.md). App Store answers (privacy label, privacy
 manifest, age rating, review notes) are in [`AppStore/APP-PRIVACY.md`](../AppStore/APP-PRIVACY.md);
 listing text is in `AppStore/metadata/en-US/`.
@@ -140,7 +140,7 @@ Then, in the app's pages:
 - **App Privacy:** the privacy policy URL (`https://primitive.io/legal/sundial-privacy/`) and the
   data-collection answers in `AppStore/APP-PRIVACY.md` (one type, Other User Content, optional,
   not linked, not tracking). They match the privacy manifests in `Apps/Resources/<Target>/`.
-- **Version 3.0.0** (the iOS version page): description, keywords, promotional text, support
+- **Version 3.1.0** (the iOS version page): description, keywords, promotional text, support
   and marketing URLs from `AppStore/metadata/en-US/`; copyright (e.g. `2026 Metavirtuoso`);
   screenshots (step 7); the build (step 5); App Review Information (step 8); version release
   (manual or automatic after approval).
@@ -151,7 +151,7 @@ not ask on each upload.
 
 ## 5. Archive and upload
 
-Versions: `MARKETING_VERSION` (3.0.0) and `CURRENT_PROJECT_VERSION` (the build number) are set
+Versions: `MARKETING_VERSION` (3.1.0) and `CURRENT_PROJECT_VERSION` (the build number) are set
 once, project-wide, in `Apps/project.yml`, so the app and its three extensions always agree, as
 the App Store requires. Every upload needs a build number higher than the last one for that
 version.
