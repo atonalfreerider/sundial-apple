@@ -45,6 +45,9 @@ answer raises it).
 ## Notes for App Review
 
 - No account or sign-in; every feature is available immediately.
+- The Earth texture is a color-adjusted derivative of NASA Visible Earth's 2002 Blue Marble
+  "Land Surface, Ocean Color and Sea Ice" map. Source, credit, bundled-file hash and NASA media
+  guidance are recorded in `AppStore/NASA-BLUE-MARBLE.md`; the app does not imply NASA endorsement.
 - Tap the Sun to fly to the Earth view; tap the Earth to return. Drag the Earth (Sun view) or
   the Moon (Earth view) to move through time; "Return to now" is in the settings menu (top left).
 - Calendars (bottom-left menu) ask for calendar access only when the reviewer chooses to show

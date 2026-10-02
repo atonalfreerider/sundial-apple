@@ -26,10 +26,11 @@ extension Instrument {
         drawDialTriangle(canvas, cx, cy, r * 0.99, angle, r * 0.025, withAlpha(instrumentColor, 77))
     }
 
-    func drawHeliocentricForeground(_ canvas: Canvas, _ cx: Double, _ cy: Double, _ r: Double, includeSun: Bool = true) {
+    func drawHeliocentricForeground(_ canvas: Canvas, _ cx: Double, _ cy: Double, _ r: Double,
+                                    includeSun: Bool = true, earthAlpha: Double = 1) {
         if zodiacProfile.enabled { drawZodiacRing(canvas, cx, cy, r) }
         if zodiacProfile.enabled { drawPlanetZodiacHands(canvas, cx, cy, r) }
-        drawOrbitPaths(canvas, cx, cy, r)
+        drawOrbitPaths(canvas, cx, cy, r, earthAlpha: earthAlpha)
         drawCalendarYearEvents(canvas, cx, cy, r)
         if includeSun { drawSun(canvas, cx, cy, r * 0.052) }
         if layout.isWatch && showClock {
@@ -405,7 +406,8 @@ extension Instrument {
         canvas.drawCircle(cx, cy, r * 1.066, white)
     }
 
-    func drawOrbitPaths(_ canvas: Canvas, _ cx: Double, _ cy: Double, _ r: Double) {
+    func drawOrbitPaths(_ canvas: Canvas, _ cx: Double, _ cy: Double, _ r: Double,
+                        earthAlpha: Double = 1) {
         for body in [Astronomy.Body.mars, Astronomy.Body.venus, Astronomy.Body.mercury, Astronomy.Body.earth] {
             let angle: Double
             if body == .earth {
@@ -417,7 +419,11 @@ extension Instrument {
             drawOrbit(canvas, body, cx, cy, r, angle)
             let point = self.point(cx, cy, r * orbitRatio(body), angle)
             if body == .earth {
-                drawEarthSubdial(canvas, point.x, point.y, r, cx, cy)
+                if earthAlpha > 0.01 {
+                    let checkpoint = earthAlpha < 1 ? canvas.saveLayer(alpha: earthAlpha) : nil
+                    drawEarthSubdial(canvas, point.x, point.y, r, cx, cy)
+                    if let checkpoint { canvas.restore(toCount: checkpoint) }
+                }
                 earthPoint = point
             } else {
                 drawPlanetMarker(canvas, body, point.x, point.y, r, cx, cy)

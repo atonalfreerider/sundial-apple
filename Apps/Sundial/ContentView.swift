@@ -22,7 +22,7 @@ struct ContentView: View {
             InstrumentView(model: model.instrumentModel)
                 .ignoresSafeArea(.all, edges: [.bottom, .horizontal])
 
-            TuckMenuHost(open: $model.openMenu, iconColor: InstrumentControls.color(model.style.chromeColor)) {
+            TuckMenuHost(open: $model.openMenu, iconColor: InstrumentControls.color(model.effectiveStyle.chromeColor)) {
                 SettingsPanel(model: model)
             } calendar: {
                 CalendarPanel(model: model)

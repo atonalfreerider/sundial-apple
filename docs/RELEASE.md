@@ -131,8 +131,8 @@ Then, in the app's pages:
   [Archivo](https://github.com/Omnibus-Type/Archivo), Copyright 2020 The Archivo Project
   Authors, under the SIL Open Font License 1.1, which allows embedding it in an app. Its licence
   ships beside it in every bundle (`sundial-condensed-OFL.txt`, from the Android repository's
-  `licenses/`). Confirm the Earth texture's source and licence too (NASA's Blue Marble imagery,
-  for example, is public domain and asks for a credit).
+  `licenses/`). Earth-image provenance, source URL, credits and bundled hash are verified in
+  `AppStore/NASA-BLUE-MARBLE.md`; include its credit in review notes and do not imply NASA endorsement.
 - **Pricing and Availability:** Free; all countries (see EU trader status above). Under
   "iPhone and iPad Apps on Apple Silicon Macs" and "Apple Vision Pro", untick availability unless
   you have tried the app there: widgets and calendar access behave differently on those
@@ -306,7 +306,8 @@ after every change to `Apps/project.yml`, and after adding, removing or renaming
 
 **Uploading to TestFlight: `.github/workflows/testflight.yml`** (the `TestFlight` workflow). It
 archives the `Sundial` scheme on a GitHub macOS runner, signs it for the App Store and uploads it
-to App Store Connect, on a `v*` tag (`git tag v3.0.0 && git push origin v3.0.0`) or by hand
+to App Store Connect, on an annotated `v*` tag
+(`git tag -a v3.1.0 -m "Sundial Apple 3.1.0" && git push origin v3.1.0`) or by hand
 (Actions → TestFlight → Run workflow). No Mac is involved: signing is automatic ("cloud
 signing"), so Xcode creates the distribution certificate and profiles through the API key and
 nothing is stored in the repository. The build number is the workflow's run number, so every
@@ -341,10 +342,12 @@ internal TestFlight group. It needs a Mac once, to create the workflow.
    same version) in `Apps/project.yml`, in step with the Android `versionName`; regenerate and
    commit the project (CI builds the committed one).
 2. `swift test` at the repository root; build both schemes (`Apps/README.md`).
-3. Archive and upload (step 5, or CI); try it through internal TestFlight on an iOS 17 device, an
+3. Commit the release, create an annotated `vX.Y.Z` tag matching `MARKETING_VERSION`, and push
+   the commit and tag. Never move a published release tag. The tag starts the TestFlight workflow.
+4. Archive and upload (step 5, or CI); try it through internal TestFlight on an iOS 17 device, an
    Apple Intelligence device, an iPad and a watch.
-4. If anything the app collects or accesses changed, update the privacy manifests
+5. If anything the app collects or accesses changed, update the privacy manifests
    (`Apps/Resources/<Target>/PrivacyInfo.xcprivacy`), `AppStore/APP-PRIVACY.md`, the App Privacy
    answers and the privacy policy together.
-5. Create the new version in App Store Connect ("What's New" from the Android release notes),
+6. Create the new version in App Store Connect ("What's New" from the Android release notes),
    refresh screenshots if the look changed, select the build and submit.

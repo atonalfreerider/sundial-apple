@@ -720,7 +720,8 @@ private func parseProfile(_ json: JSON) -> ZodiacProfile {
         enabled: json["enabled"].bool,
         birthDate: json["birthDate"].isNull ? nil : parseDate(json["birthDate"]),
         birthTime: time.isNull ? nil : LocalTime(time["hour"].int, time["minute"].int, time["second"].int),
-        selectedSign: json["selectedSign"].isNull ? nil : Zodiac.Sign.allCases.first { $0.name == json["selectedSign"].string }!
+        selectedSign: json["selectedSign"].isNull ? nil : Zodiac.Sign.allCases.first { $0.name == json["selectedSign"].string }!,
+        birthZoneId: json["birthZoneId"].isNull ? nil : json["birthZoneId"].string
     )
 }
 

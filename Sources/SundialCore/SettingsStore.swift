@@ -84,7 +84,7 @@ public struct CelestialStylePreferences: @unchecked Sendable {
 
     public func get() -> CelestialStyle {
         let stored = values.getString(Self.backgroundStyle, nil)
-        return CelestialStyle.allCases.first { $0.name == stored } ?? .voidBlack
+        return CelestialStyle.pickableCases.first { $0.name == stored } ?? .voidBlack
     }
 
     public func set(_ style: CelestialStyle) {
@@ -100,6 +100,7 @@ public struct ZodiacPreferences: @unchecked Sendable {
     private static let optInVersion = "opt_in_version"
     private static let birthDate = "birth_date"
     private static let birthTime = "birth_time"
+    private static let birthZone = "birth_zone"
     private static let sign = "sign"
     private static let horoscope = "horoscope"
     private static let horoscopeSignature = "horoscope_signature"
@@ -123,7 +124,8 @@ public struct ZodiacPreferences: @unchecked Sendable {
             // LocalDate::parse and LocalTime::parse throw on text they cannot read; these give nil.
             birthDate: values.getString(Self.birthDate, nil).flatMap(LocalDate.parse),
             birthTime: values.getString(Self.birthTime, nil).flatMap(LocalTime.parse),
-            selectedSign: values.getString(Self.sign, nil).flatMap { stored in Zodiac.Sign.allCases.first { $0.name == stored } }
+            selectedSign: values.getString(Self.sign, nil).flatMap { stored in Zodiac.Sign.allCases.first { $0.name == stored } },
+            birthZoneId: values.getString(Self.birthZone, nil)
         )
     }
 
@@ -139,6 +141,7 @@ public struct ZodiacPreferences: @unchecked Sendable {
         values.putString(Self.birthDate, preserved.birthDate?.description)
         values.putString(Self.birthTime, preserved.birthTime?.description)
         values.putString(Self.sign, preserved.selectedSign?.name)
+        values.putString(Self.birthZone, preserved.birthZoneId)
         return preserved
     }
 
@@ -146,6 +149,7 @@ public struct ZodiacPreferences: @unchecked Sendable {
         var copy = requested
         copy.birthDate = requested.birthDate ?? stored.birthDate
         copy.birthTime = requested.birthTime ?? stored.birthTime
+        copy.birthZoneId = requested.birthZoneId ?? stored.birthZoneId
         return copy
     }
 

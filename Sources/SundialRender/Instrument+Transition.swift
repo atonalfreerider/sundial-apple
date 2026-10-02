@@ -69,7 +69,8 @@ extension Instrument {
             heliocentricCamera()
             withTextScreenRotation(cameraRotation) {
                 drawSeasonShading(canvas, cx, cy, r)
-                drawHeliocentricForeground(canvas, cx, cy, r, includeSun: false)
+                drawHeliocentricForeground(canvas, cx, cy, r, includeSun: false,
+                                            earthAlpha: min(max(1 - progress / Instrument.flightEarthHandover, 0), 1))
             }
             canvas.restore(toCount: checkpoint)
         }

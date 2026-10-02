@@ -13,6 +13,7 @@ public final class EarthSphereRenderer {
         let timeBucket: Int64
         let north: Bool
         let highlightOffsetMinutes: Int?
+        let brass: Bool
     }
 
     private let source: PixelImage
@@ -71,7 +72,8 @@ public final class EarthSphereRenderer {
                 sz[i] = z
                 // From the ecliptic pole, sunlight is in the screen plane. This produces the
                 // required half-lit globe and a terminator through its center.
-                illumination[i] = Float(0.10 + min(max(y, 0.0), 1.0) * 0.90)
+                illumination[i] = Float(EarthSphereRenderer.nightLight + min(max(y, 0.0), 1.0) *
+                    (1.0 - EarthSphereRenderer.nightLight))
                 atmosphere[i] = Float(Int(pow(1.0 - z, 2.6) * 72))
                 alpha[i] = Int((1.0 - min(max((rr - 0.94) / 0.06, 0.0), 1.0)) * 255)
             }
@@ -88,16 +90,32 @@ public final class EarthSphereRenderer {
 
     /// The satellite texture has near-black oceans. Lift its photographic floor before lighting so
     /// every longitude still reads as Earth, while the terminator remains.
-    private let lift: [Float] = (0..<256).map { Float(255.0 * pow(Double($0) / 255.0, 0.52)) }
+    private let lift: [Float] = (0..<256).map { Float(255.0 * pow(Double($0) / 255.0, 0.46)) }
+
+    private lazy var land: [Bool] = texturePixels.map { pixel in
+        let red = Int((pixel >> 16) & 0xFF), green = Int((pixel >> 8) & 0xFF), blue = Int(pixel & 0xFF)
+        return !(blue - max(red, green) > 12 && red < 48)
+    }
+
+    private lazy var coast: [Bool] = {
+        let w = source.width, h = source.height, reach = max(1, source.width / 1024), mask = land
+        return mask.indices.map { i in
+            let x = i % w, y = i / w, here = mask[i]
+            return (y >= reach && mask[i - reach * w] != here) ||
+                (y < h - reach && mask[i + reach * w] != here) ||
+                mask[y * w + (x + reach) % w] != here ||
+                mask[y * w + (x - reach + w) % w] != here
+        }
+    }()
 
     /// Renders the globe as Unity's Earth camera saw it: from the ecliptic pole with the Sun at the
     /// top. Solar noon faces the Sun, the axis keeps its fixed tilt in space (so it leans toward the
     /// Sun in June and away in December), and the surface turns with sidereal time.
     ///
     /// [highlightOffsetMinutes] paints Unity's red time-zone strip along that zone's meridian band.
-    public func render(_ instant: Date, _ north: Bool, _ highlightOffsetMinutes: Int?) -> PixelImage {
+    public func render(_ instant: Date, _ north: Bool, _ highlightOffsetMinutes: Int?, brass: Bool = false) -> PixelImage {
         let key = FrameKey(timeBucket: instant.epochSecond / 30, north: north,
-                           highlightOffsetMinutes: highlightOffsetMinutes)
+                           highlightOffsetMinutes: highlightOffsetMinutes, brass: brass)
         if let hit = frames.firstIndex(where: { $0.key == key }) {
             let entry = frames.remove(at: hit)
             frames.append(entry)
@@ -105,7 +123,7 @@ public final class EarthSphereRenderer {
         }
         let output = renderFrame(
             Astronomy.greenwichMeanSiderealDegrees(instant), Zodiac.sunLongitude(instant), north,
-            highlightOffsetMinutes, true
+            highlightOffsetMinutes, true, brass
         )
         frames.append((key: key, frame: output))
         if frames.count > 3 { frames.removeFirst() }
@@ -113,8 +131,9 @@ public final class EarthSphereRenderer {
     }
 
     /// Kotlin's `highlightOffsetMinutes: Int? = null` default, for calls that omit or label it.
-    public func render(_ instant: Date, _ north: Bool, highlightOffsetMinutes: Int? = nil) -> PixelImage {
-        render(instant, north, highlightOffsetMinutes)
+    public func render(_ instant: Date, _ north: Bool, highlightOffsetMinutes: Int? = nil,
+                       brass: Bool = false) -> PixelImage {
+        render(instant, north, highlightOffsetMinutes, brass: brass)
     }
 
     /// The globe's surface without sunlight, turned [siderealDegrees] and oriented like the solar
@@ -140,7 +159,8 @@ public final class EarthSphereRenderer {
         _ sunLongitudeDegrees: Double,
         _ north: Bool,
         _ highlightOffsetMinutes: Int?,
-        _ lit: Bool
+        _ lit: Bool,
+        _ brass: Bool = false
     ) -> PixelImage {
         let s = samples
         var pixels = [ARGB](repeating: 0, count: size * size)
@@ -159,6 +179,10 @@ public final class EarthSphereRenderer {
         let cosObliquity = cos(EarthOrientation.obliquityDegrees * (Double.pi / 180))
         let mirror = north ? 1.0 : -1.0
         let twoPi = 2.0 * Double.pi
+        let landMask = brass ? land : nil
+        let coastMask = brass ? coast : nil
+        let lineWidth = (1.5 * 57.3 / (Double(size) * 0.485)) * .pi / 180
+        let step = 15.0 * .pi / 180
 
         for i in s.index.indices {
             let right = s.sx[i] * mirror
@@ -177,6 +201,21 @@ public final class EarthSphereRenderer {
             let sample = texture[v * textureWidth + u]
 
             let light: Float = lit ? s.illumination[i] : 1
+            if let landMask, let coastMask {
+                let texel = v * textureWidth + u
+                func nearLine(_ angle: Double, _ width: Double) -> Bool {
+                    abs(angle - step * floor(angle / step + 0.5)) < width
+                }
+                let width = lineWidth / max(s.sz[i], 0.25)
+                let majorLatitude = abs(latitude) < width * 1.8
+                let majorLongitude = abs(wrapped * twoPi) < width * 1.8
+                let etched = coastMask[texel] || majorLatitude || majorLongitude || nearLine(latitude, width) ||
+                    (abs(latitude) < 80 * .pi / 180 && nearLine(wrapped * twoPi, width / max(cos(latitude), 0.2)))
+                pixels[s.index[i]] = ARGB(s.alpha[i]) << 24 |
+                    brassPixel(landMask[texel], etched, light, s.sx[i] * mirror, s.sy[i], s.sz[i],
+                               highlightCenter, longitude, highlightHalfWidth)
+                continue
+            }
             let glow = s.atmosphere[i]
             var red = lift[Int((sample >> 16) & 0xFF)] * light + 10 + glow * 0.32
             var green = lift[Int((sample >> 8) & 0xFF)] * light + 14 + glow * 0.52
@@ -203,6 +242,38 @@ public final class EarthSphereRenderer {
 
     private func floorMod(_ value: Int, _ modulus: Int) -> Int { ((value % modulus) + modulus) % modulus }
 
+    private func brassPixel(_ isLand: Bool, _ etched: Bool, _ light: Float, _ x: Double, _ y: Double,
+                            _ z: Double, _ highlightCenter: Double?, _ longitude: Double,
+                            _ highlightHalfWidth: Double) -> ARGB {
+        var red: Float = isLand ? 207 : 244
+        var green: Float = isLand ? 164 : 209
+        var blue: Float = isLand ? 82 : 126
+        let daylight = min(max((light - Float(Self.nightLight)) / Float(1 - Self.nightLight), 0), 1)
+        let metalLight = 0.56 + daylight * 0.44
+        let shade = metalLight * (0.86 + 0.14 * Float(z))
+        let sheen = Float(pow(max(0, y * 0.55 + z * 0.55 - x * 0.2), 18) * 120)
+        red = red * shade + sheen
+        green = green * shade + sheen * 0.9
+        blue = blue * shade + sheen * 0.6
+        if let highlightCenter {
+            let delta = (longitude - highlightCenter) - 2 * .pi * floor((longitude - highlightCenter) / (2 * .pi) + 0.5)
+            if abs(delta) <= highlightHalfWidth {
+                red = red * 0.45 + 200 * 0.55
+                green = green * 0.45 + 30 * 0.55
+                blue = blue * 0.45 + 28 * 0.55
+            }
+        }
+        if etched {
+            red = red * 0.24 + 69 * 0.76 * metalLight
+            green = green * 0.24 + 44 * 0.76 * metalLight
+            blue = blue * 0.24 + 14 * 0.76 * metalLight
+        }
+        return ARGB(min(max(Int(red), 0), 255)) << 16 |
+            ARGB(min(max(Int(green), 0), 255)) << 8 |
+            ARGB(min(max(Int(blue), 0), 255))
+    }
+
     /// Enough for the Earth view's full-width globe on a phone.
     public static let defaultSize = 512
+    private static let nightLight = 0.32
 }

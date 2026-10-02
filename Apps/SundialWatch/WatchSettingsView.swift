@@ -66,7 +66,7 @@ struct WatchSettingsView: View {
                     dismiss()
                 }
                 WatchControls.section("AESTHETIC")
-                ForEach(CelestialStyle.allCases, id: \.self) { option in
+                ForEach(CelestialStyle.pickableCases, id: \.self) { option in
                     WatchActionRow(title: "\(option == style ? "◆" : "◇")  \(option.displayName.uppercased())",
                                    description: "Use \(option.displayName)",
                                    selected: option == style) {

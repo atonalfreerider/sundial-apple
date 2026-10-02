@@ -54,7 +54,7 @@ extension Instrument {
         canvas.drawOval(Rect(cx - sphereRadius * 1.08, cy - sphereRadius * 0.92,
                              cx + sphereRadius * 1.16, cy + sphereRadius * 1.2), shadow)
         drawEarthSeal(canvas, cx, cy, sphereRadius, cx, sunY, true,
-                      highlightOffsetMinutes: selectedTimeZoneOffset())
+                      highlightOffsetMinutes: selectedZoneMeridianOffset())
 
         drawMoonGlyph(canvas, moonPoint.x, moonPoint.y, r * 0.041, cx, sunY)
     }
@@ -127,6 +127,14 @@ extension Instrument {
         let currentLocalOffset = TimeZoneDial.localOffsetMinutes(selectedInstant, zone)
         if selectedTimeZoneOffsetMinutes == nil { selectedTimeZoneOffsetMinutes = currentLocalOffset }
         return selectedTimeZoneIsLocal ? currentLocalOffset : selectedTimeZoneOffsetMinutes!
+    }
+
+    /// The globe strip marks the standard meridian; the live wheel moves an hour ahead in DST.
+    func selectedZoneMeridianOffset() -> Int {
+        if !selectedTimeZoneIsLocal { return selectedTimeZoneOffset() }
+        let actual = zone.secondsFromGMT(for: selectedInstant)
+        let dst = Int(zone.daylightSavingTimeOffset(for: selectedInstant))
+        return (actual - dst) / 60
     }
 
     /// Unity's local wheel around the globe: a thin ring with an outward tooth for every hour. The
@@ -202,7 +210,8 @@ extension Instrument {
 
     func drawEarthSeal(_ canvas: Canvas, _ x: Double, _ y: Double, _ radius: Double, _ sunX: Double, _ sunY: Double,
                        _ ornate: Bool, highlightOffsetMinutes: Int? = nil) {
-        let bitmap = earthRenderer.render(selectedInstant, north, highlightOffsetMinutes: highlightOffsetMinutes)
+        let bitmap = earthRenderer.render(selectedInstant, north, highlightOffsetMinutes: highlightOffsetMinutes,
+                                          brass: brass)
         let sunAngle = atan2(sunY - y, sunX - x) * 180 / .pi
         // EarthSphereRenderer uses Sun-up coordinates; rotate the complete globe into the actual
         // Earth-to-Sun direction without changing its geographic orientation.
@@ -248,7 +257,7 @@ extension Instrument {
         canvas.drawCircle(x, y, radius * 2.7, aura)
         // Android's size is in device pixels (its canvas unit), and MoonSphereRenderer clamps it
         // in pixels: render at the resolution the glyph is drawn at, whatever the host's units.
-        let moon = moonRenderer.render(Int(radius * 2 * pixelsPerUnit), sunX - x, sunY - y)
+        let moon = moonRenderer.render(Int(radius * 2 * pixelsPerUnit), sunX - x, sunY - y, brass: brass)
         // Android draws the bitmap with the shared fill paint, so it takes that paint's alpha.
         canvas.drawImage(moon, Rect(x - radius, y - radius, x + radius, y + radius), alpha: Double(fill.alpha) / 255)
         white.color = withAlpha(instrumentColor, 184); white.strokeWidth = max(devicePixels(1), radius * 0.075)

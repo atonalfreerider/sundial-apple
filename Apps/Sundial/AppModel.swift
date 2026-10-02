@@ -50,6 +50,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var horoscopeStatus = AppModel.defaultStatus
     @Published private(set) var horoscopeAvailability: HoroscopeService.Availability
 
+    var effectiveStyle: CelestialStyle { CelestialStyle.effective(style, zodiacProfile) }
+
     /// MainActivity.showZodiacSignPicker's dialog.
     @Published var showingSignPicker = false
     /// MainActivity.showReportDialog's dialog, with the reading it would report.
@@ -236,6 +238,12 @@ final class AppModel: ObservableObject {
         return calendarStore?.calendars ?? []
     }
 
+    private func syncHolidayCalendars() {
+        instrumentModel.instrument.setHolidayCalendarIds(Set(deviceCalendars.filter {
+            HolidayIcons.isHolidayCalendar($0.displayName, $0.accountName)
+        }.map(\.id)))
+    }
+
     func isCalendarSelected(_ id: Int64) -> Bool { selectedCalendarIds.contains(id) }
 
     /// CalendarPanel's switch listener, then MainActivity's onCalendarSelectionChanged.
@@ -266,6 +274,7 @@ final class AppModel: ObservableObject {
     /// refreshCalendarAccess: with access the calendars are listed, without it the panel asks.
     private func refreshCalendarAccess() {
         calendarStore?.refreshAccess()
+        syncHolidayCalendars()
     }
 
     /// loadOccurrences: the chosen calendars' events in the displayed year. The year is read now,
@@ -278,6 +287,7 @@ final class AppModel: ObservableObject {
         occurrenceTask = Task { [weak self] in
             let occurrences = await calendarStore.occurrences(calendarIds: ids, year: year, zone: zone)
             guard !Task.isCancelled, let self else { return }
+            self.syncHolidayCalendars()
             self.instrumentModel.setCalendarOccurrences(occurrences)
         }
     }
@@ -293,13 +303,22 @@ final class AppModel: ObservableObject {
     func setBirthDate(_ date: LocalDate) {
         var profile = zodiacProfile
         profile.birthDate = date
-        profile.selectedSign = Zodiac.signFor(date)
+        profile.selectedSign = nil
         updateZodiacProfile(profile)
     }
 
     func setBirthTime(_ time: LocalTime) {
         var profile = zodiacProfile
         profile.birthTime = time
+        updateZodiacProfile(profile)
+    }
+
+    func setBirthZone(_ identifier: String) {
+        guard TimeZone(identifier: identifier) != nil else { return }
+        var profile = zodiacProfile
+        let automatic = profile.selectedSign == nil || profile.selectedSign == profile.birthDate.map(Zodiac.signFor)
+        profile.birthZoneId = identifier
+        if automatic { profile.selectedSign = nil }
         updateZodiacProfile(profile)
     }
 
@@ -319,7 +338,7 @@ final class AppModel: ObservableObject {
         let signs = Zodiac.Sign.allCases
         guard which >= 0, which <= signs.count else { return }
         var profile = zodiacProfile
-        profile.selectedSign = which == 0 ? zodiacProfile.birthDate.map(Zodiac.signFor) : signs[which - 1]
+        profile.selectedSign = which == 0 ? nil : signs[which - 1]
         updateZodiacProfile(profile, horoscopeDelay: 0)
     }
 

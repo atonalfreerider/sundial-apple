@@ -146,13 +146,16 @@ public final class Instrument {
     var realtime = true
     var running = true
     var wallpaperMode = false
-    var backgroundStyle: CelestialStyle
+    /// What the user chose. Astrology can dress it in an element palette; Brass always wins.
+    var selectedStyle: CelestialStyle
+    var backgroundStyle: CelestialStyle { CelestialStyle.effective(selectedStyle, zodiacProfile) }
     var zodiacProfile: ZodiacProfile
     var horoscopeText: String?
     var selectedInstant: Date
     var dragMode = DragMode.none
     /// Selected calendars in the order they were chosen (a LinkedHashSet on Android).
     var selectedCalendarIds: [Int64] = []
+    var holidayCalendarIds = Set<Int64>()
     var occurrences: [CalendarOccurrence] = []
     var lastReportedCalendarYear = 0
     var earthPoint = Point(0, 0)
@@ -221,6 +224,7 @@ public final class Instrument {
 
     static let transitionDuration: TimeInterval = 1.0
     static let localToothRed: ARGB = 0xFFE3_262E
+    static let flightEarthHandover = 0.2
     static let brassEnamelRed: ARGB = 0xFF7A_1E12
     static let galacticStepsPerYear = 180
     /// Short events still get this much arc (about four weeks / three hours) for their title.
@@ -237,7 +241,7 @@ public final class Instrument {
         self.layout = layout
         self.density = density
         self.zone = zone
-        backgroundStyle = style
+        selectedStyle = style
         self.zodiacProfile = zodiacProfile
         horoscopeText = horoscope
         selectedInstant = now
@@ -256,7 +260,7 @@ public final class Instrument {
     public var isRealtime: Bool { realtime }
     public var viewState: ViewState { state }
     public var instant: Date { selectedInstant }
-    public var style: CelestialStyle { backgroundStyle }
+    public var style: CelestialStyle { selectedStyle }
     public var earthPointForTest: Point { earthPoint }
     public var sunPointForTest: Point { sunPoint }
     public var inspectedEventTitleForTest: String? { inspectedEvent?.title }
@@ -279,14 +283,14 @@ public final class Instrument {
 
     /// The host saves the choice; the instrument only draws it.
     public func setBackgroundStyle(_ value: CelestialStyle) {
-        backgroundStyle = value
+        selectedStyle = value
         invalidate()
     }
 
     /// Freezes the instrument in one moment, style and view for screenshots; nothing is saved.
     public func freezeForCapture(instant: Date, state captureState: ViewState, style: CelestialStyle) {
         pauseClock()
-        backgroundStyle = style
+        selectedStyle = style
         state = captureState
         transitionFrom = nil
         selectedInstant = instant
@@ -309,6 +313,11 @@ public final class Instrument {
 
     public func setSelectedCalendarIds(_ ids: [Int64]) {
         selectedCalendarIds = ids
+        invalidate()
+    }
+
+    public func setHolidayCalendarIds(_ ids: Set<Int64>) {
+        holidayCalendarIds = ids
         invalidate()
     }
 

@@ -29,7 +29,7 @@ struct SettingsPanel: View {
             }
 
             InstrumentControls.section("AESTHETIC")
-            ForEach(CelestialStyle.allCases, id: \.self) { style in
+            ForEach(CelestialStyle.pickableCases, id: \.self) { style in
                 let selected = style == model.style
                 InstrumentAction("\(selected ? "◆" : "◇")  \(style.displayName.uppercased())",
                                  "Use \(style.displayName) in Sundial and its widgets",

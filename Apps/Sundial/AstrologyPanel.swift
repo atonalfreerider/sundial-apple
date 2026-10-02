@@ -80,6 +80,7 @@ struct AstrologyPanel: View {
     @ObservedObject var model: AppModel
     @ObservedObject var form: AstrologyForm
     @FocusState private var focus: AstrologyForm.Field?
+    @State private var showingZonePicker = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -119,6 +120,11 @@ struct AstrologyPanel: View {
             if let validation = form.validation, !Self.isBlank(validation) {
                 InstrumentControls.label(validation, 13, 0xFFFF_8F7A)
                     .padding(EdgeInsets(top: 4, leading: 2, bottom: 0, trailing: 2))
+            }
+
+            InstrumentControls.section("BIRTH TIME ZONE")
+            InstrumentAction(birthZoneTitle, "Choose the time zone where the birth time was observed") {
+                showingZonePicker = true
             }
 
             InstrumentControls.section("SUN SIGN")
@@ -187,14 +193,24 @@ struct AstrologyPanel: View {
             model.refreshHoroscopeAvailability()
         }
         .onDisappear { form.focused = nil }
+        .sheet(isPresented: $showingZonePicker) {
+            BirthZonePicker(selected: model.zodiacProfile.birthZone.identifier) { identifier in
+                model.setBirthZone(identifier)
+                showingZonePicker = false
+            }
+        }
     }
 
     /// "♈︎  ARIES  · FROM BIRTHDAY", or without the note for a sign chosen by hand.
     private var signTitle: String {
         let profile = model.zodiacProfile
         let sign = profile.resolvedSign()
-        let fromBirthday = profile.selectedSign == nil || profile.birthDate.map(Zodiac.signFor) == profile.selectedSign
-        return "\(sign.symbol)  \(sign.displayName.uppercased())" + (fromBirthday ? "  · FROM BIRTHDAY" : "")
+        let fromBirthday = profile.selectedSign == nil || profile.natalSign == profile.selectedSign
+        return "\(sign.symbol)  \(sign.displayName.uppercased())" + (fromBirthday ? "  · FROM BIRTH" : "")
+    }
+
+    private var birthZoneTitle: String {
+        model.zodiacProfile.birthZone.identifier.replacingOccurrences(of: "_", with: " ").uppercased()
     }
 
     // MARK: Editing
@@ -347,6 +363,41 @@ struct AstrologyPanel: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Birth time is \(label)")
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+/// Searchable IANA region/city picker; birth years remain direct numeric entry above.
+private struct BirthZonePicker: View {
+    let selected: String
+    let onSelect: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+
+    private var zones: [String] {
+        TimeZone.knownTimeZoneIdentifiers.filter {
+            $0.contains("/") && !$0.hasPrefix("Etc/") &&
+                (query.isEmpty || $0.localizedCaseInsensitiveContains(query.replacingOccurrences(of: " ", with: "_")))
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List(zones, id: \.self) { identifier in
+                Button {
+                    onSelect(identifier)
+                    dismiss()
+                } label: {
+                    HStack {
+                        Text(identifier.replacingOccurrences(of: "_", with: " "))
+                        Spacer()
+                        if identifier == selected { Image(systemName: "checkmark") }
+                    }
+                }
+            }
+            .navigationTitle("Birth Time Zone")
+            .searchable(text: $query, prompt: "City or region")
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+        }
     }
 }
 

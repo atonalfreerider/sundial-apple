@@ -64,6 +64,15 @@ jobs:
             exit 1
           fi
 
+      - name: Verify release tag matches the app version
+        if: ${{ github.ref_type == 'tag' }}
+        run: |
+          version=$(sed -n 's/^[[:space:]]*MARKETING_VERSION: "\([0-9][0-9.]*\)"/\1/p' Apps/project.yml | head -1)
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match MARKETING_VERSION $version"
+            exit 1
+          fi
+
       - name: Select the newest released Xcode
         run: |
           # Release builds must come from a released Xcode, never a beta.

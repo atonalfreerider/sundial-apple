@@ -23,7 +23,11 @@ extension Instrument {
         var band = Paint()
         band.style = .stroke
         arcLabel.textSize = yearEventLabelSize(r)
-        for event in occurrences where event.isYearRingEvent {
+        let annual = occurrences.filter(\.isYearRingEvent)
+        let holidays = annual.filter { holidayCalendarIds.contains($0.calendarId) }
+        let events = annual.filter { !holidayCalendarIds.contains($0.calendarId) }
+        var labels: [ArcLabel] = []
+        for event in events {
             guard let segment = CalendarIntervals.inYear(event, year, zone) else { continue }
             let eventBand = yearBand(r, event.calendarId)
             band.color = withAlpha(event.color, 145)
@@ -32,10 +36,13 @@ extension Instrument {
                                  cx + eventBand.centerRadius, cy + eventBand.centerRadius)
             canvas.drawArc(arcBounds, annualAngle(segment.startFraction),
                            (north ? -360.0 : 360.0) * segment.sweepFraction, false, band)
-            drawArcLabel(canvas, event.title, cx, cy, eventBand.centerRadius,
-                         annualAngle(segment.startFraction + segment.sweepFraction / 2.0),
-                         max(segment.sweepFraction * 360.0, Instrument.minYearLabelDegrees))
+            labels.append(ArcLabel(event.title, eventBand.centerRadius,
+                                   annualAngle(segment.startFraction + segment.sweepFraction / 2.0),
+                                   max(segment.sweepFraction * 360.0, Instrument.minYearLabelDegrees),
+                                   segment.sweepFraction))
         }
+        let occupied = drawHolidayIcons(canvas, cx, cy, r, holidays, year)
+        drawArcLabelsWithoutOverlap(canvas, cx, cy, labels, occupied)
     }
 
     func drawCalendarDayEvents(_ canvas: Canvas, _ cx: Double, _ cy: Double, _ hourR: Double) {
@@ -43,6 +50,7 @@ extension Instrument {
         var band = Paint()
         band.style = .stroke
         arcLabel.textSize = dayEventLabelSize(hourR)
+        var labels: [ArcLabel] = []
         for event in occurrences where !event.isYearRingEvent {
             guard let segment = CalendarIntervals.inDay(event, day, zone) else { continue }
             let eventBand = dayBand(hourR, event.calendarId)
@@ -53,21 +61,99 @@ extension Instrument {
                                  cx + eventBand.centerRadius, cy + eventBand.centerRadius)
             canvas.drawArc(arcBounds, hourAngle(segment.startMinute / 60.0),
                            (north ? -1.0 : 1.0) * minutes / 4.0, false, band)
-            drawArcLabel(canvas, event.title, cx, cy, eventBand.centerRadius,
-                         hourAngle((segment.startMinute + segment.endMinuteExclusive) / 120.0),
-                         max(minutes / 4.0, Instrument.minDayLabelDegrees))
+            labels.append(ArcLabel(event.title, eventBand.centerRadius,
+                                   hourAngle((segment.startMinute + segment.endMinuteExclusive) / 120.0),
+                                   max(minutes / 4.0, Instrument.minDayLabelDegrees), minutes))
+        }
+        drawArcLabelsWithoutOverlap(canvas, cx, cy, labels, [])
+    }
+
+    struct ArcLabel {
+        let title: String, radius: Double, midAngle: Double, maxSweep: Double, weight: Double
+        init(_ title: String, _ radius: Double, _ midAngle: Double, _ maxSweep: Double, _ weight: Double) {
+            self.title = title; self.radius = radius; self.midAngle = midAngle
+            self.maxSweep = maxSweep; self.weight = weight
         }
     }
+
+    struct ArcOccupation { let radius: Double, angle: Double, halfWidth: Double }
+
+    func drawHolidayIcons(_ canvas: Canvas, _ cx: Double, _ cy: Double, _ r: Double,
+                          _ holidays: [CalendarOccurrence], _ year: Int) -> [ArcOccupation] {
+        if holidays.isEmpty { return [] }
+        let size = yearEventLabelSize(r) * 1.05
+        var iconPaint = Paint()
+        iconPaint.textSize = size
+        iconPaint.textAlign = .center
+        var tick = Paint(style: .stroke)
+        tick.strokeWidth = max(density, r * 0.004)
+        var shown: [String: Double] = [:]
+        var rows: [[Double]] = []
+        var occupied: [ArcOccupation] = []
+        let ordered = holidays.compactMap { event -> (CalendarOccurrence, YearSegment)? in
+            CalendarIntervals.inYear(event, year, zone).map { (event, $0) }
+        }.sorted { $0.1.startFraction < $1.1.startFraction }
+        for (event, segment) in ordered {
+            let icon = HolidayIcons.icon(for: event.title)
+            if let previous = shown[icon], abs(previous - segment.startFraction) < 5.0 / 365.0 { continue }
+            shown[icon] = segment.startFraction
+            let eventBand = yearBand(r, event.calendarId)
+            let angle = annualAngle(segment.startFraction + min(segment.sweepFraction, 1.0 / 365.0) / 2)
+            tick.color = withAlpha(event.color, 220)
+            drawRadialLine(canvas, cx, cy, eventBand.centerRadius - eventBand.thickness / 2,
+                           eventBand.centerRadius + eventBand.thickness / 2, angle, tick)
+            func rowRadius(_ row: Int) -> Double { eventBand.centerRadius - Double(row) * size * 1.15 }
+            var row = 0
+            while row < rows.count && rows[row].contains(where: {
+                angularGap($0, angle) * .pi / 180 * rowRadius(row) < size * 1.05
+            }) { row += 1 }
+            if row > 2 { continue }
+            if row == rows.count { rows.append([]) }
+            rows[row].append(angle)
+            let radius = rowRadius(row)
+            occupied.append(ArcOccupation(radius: radius, angle: angle,
+                                           halfWidth: (size * 0.55 / radius) * 180 / .pi))
+            let p = point(cx, cy, radius, angle)
+            canvas.save()
+            canvas.rotate(-textScreenRotation, p.x, p.y)
+            let metrics = canvas.fontMetrics(iconPaint)
+            canvas.drawText(icon, p.x, p.y - (metrics.ascent + metrics.descent) / 2, iconPaint)
+            canvas.restore()
+        }
+        return occupied
+    }
+
+    func drawArcLabelsWithoutOverlap(_ canvas: Canvas, _ cx: Double, _ cy: Double,
+                                     _ labels: [ArcLabel], _ initial: [ArcOccupation]) {
+        var placed = initial
+        for label in labels.sorted(by: { $0.weight > $1.weight }) {
+            guard let fitted = fitArcLabel(canvas, label.title, label.radius, label.maxSweep) else { continue }
+            let half = (canvas.measureText(fitted, arcLabel) / label.radius) * 180 / .pi / 2
+            let gap = (arcLabel.textSize * 0.6 / label.radius) * 180 / .pi
+            if placed.contains(where: {
+                abs($0.radius - label.radius) < arcLabel.textSize * 1.15 &&
+                    angularGap($0.angle, label.midAngle) < half + $0.halfWidth + gap
+            }) { continue }
+            placed.append(ArcOccupation(radius: label.radius, angle: label.midAngle, halfWidth: half))
+            drawArcLabel(canvas, fitted, cx, cy, label.radius, label.midAngle, label.maxSweep)
+        }
+    }
+
+    func fitArcLabel(_ canvas: Canvas, _ value: String, _ radius: Double, _ maxSweep: Double) -> String? {
+        let available = radius * (maxSweep * .pi / 180) * 0.92
+        if available < arcLabel.textSize * 1.2 { return nil }
+        let label = canvas.ellipsize(value, arcLabel, available)
+        return label.allSatisfy(\.isWhitespace) ? nil : label
+    }
+
+    func angularGap(_ a: Double, _ b: Double) -> Double { abs(Astronomy.normalizeSignedDegrees(a - b)) }
 
     /// Draws [value] curved along a circle of [radius], centred on [midAngle] and ellipsized to fit
     /// [maxSweepDegrees] of arc. The path runs clockwise on the upper half of the screen and
     /// anticlockwise on the lower half, so the title always reads left to right.
     func drawArcLabel(_ canvas: Canvas, _ value: String, _ cx: Double, _ cy: Double, _ radius: Double,
                       _ midAngle: Double, _ maxSweepDegrees: Double) {
-        let available = (radius * (maxSweepDegrees * .pi / 180)) * 0.92
-        if available < arcLabel.textSize * 1.2 { return }
-        let label = canvas.ellipsize(value, arcLabel, available)
-        if label.allSatisfy(\.isWhitespace) { return }
+        guard let label = fitArcLabel(canvas, value, radius, maxSweepDegrees) else { return }
         // Light text with a soft dark halo reads on any calendar colour, on sky or brass.
         arcLabel.color = brass ? Colors.white : instrumentColor
         arcLabel.shadow = Shadow(radius: 2.5 * density, dx: 0, dy: 0, color: 0xD000_0000)

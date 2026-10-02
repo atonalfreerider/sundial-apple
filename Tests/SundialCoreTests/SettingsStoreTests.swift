@@ -50,16 +50,18 @@ final class SettingsStoreTests: XCTestCase {
 
     func testProfileIsStoredAsAndroidStoresItAndNatalDataIsKept() {
         let profile = ZodiacProfile(enabled: true, birthDate: LocalDate(1976, 7, 4), birthTime: LocalTime(7, 5),
-                                    selectedSign: .pisces)
+                                    selectedSign: .pisces, birthZoneId: "America/Chicago")
         XCTAssertEqual(store.zodiac.set(profile), profile)
         XCTAssertEqual(defaults.string(forKey: "zodiac_profile.birth_date"), "1976-07-04")
         XCTAssertEqual(defaults.string(forKey: "zodiac_profile.birth_time"), "07:05")
         XCTAssertEqual(defaults.string(forKey: "zodiac_profile.sign"), "PISCES")
+        XCTAssertEqual(defaults.string(forKey: "zodiac_profile.birth_zone"), "America/Chicago")
         XCTAssertEqual(store.zodiac.get(), profile)
 
         // A mode-only update keeps the birthday and time; the sign follows the request.
         let saved = store.zodiac.set(ZodiacProfile(enabled: false))
-        XCTAssertEqual(saved, ZodiacProfile(enabled: false, birthDate: LocalDate(1976, 7, 4), birthTime: LocalTime(7, 5)))
+        XCTAssertEqual(saved, ZodiacProfile(enabled: false, birthDate: LocalDate(1976, 7, 4),
+                                            birthTime: LocalTime(7, 5), birthZoneId: "America/Chicago"))
         XCTAssertEqual(store.zodiac.get(), saved)
         XCTAssertNil(defaults.object(forKey: "zodiac_profile.sign"))
     }
@@ -71,7 +73,7 @@ final class SettingsStoreTests: XCTestCase {
 
         store.zodiac.setHoroscope(profile, today, "\u{00A0} The gears turn toward you.\n")
         XCTAssertEqual(store.zodiac.getCurrentHoroscope(profile, today), "The gears turn toward you.")
-        XCTAssertEqual(defaults.string(forKey: "zodiac_profile.horoscope_signature"), "true|1990-03-20|23:59:30|null")
+        XCTAssertEqual(defaults.string(forKey: "zodiac_profile.horoscope_signature"), "true|1990-03-20|23:59:30|null|null")
         XCTAssertEqual(defaults.string(forKey: "zodiac_profile.horoscope_date"), "2026-09-26")
         XCTAssertNil(store.zodiac.getCurrentHoroscope(profile, today.plusDays(1)))
         var other = profile

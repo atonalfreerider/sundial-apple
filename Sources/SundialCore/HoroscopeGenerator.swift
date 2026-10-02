@@ -14,7 +14,7 @@ public enum HoroscopeGenerator {
         }.joined(separator: ", ")
         let prompt = """
             Write a vivid daily horoscope as a single paragraph of 55 to 85 words.
-            Reader: \(sign.displayName) sun sign, born \(profile.birthDate.map { $0.description } ?? "null") at \(profile.birthTime.map { $0.description } ?? "null") local time.
+            Reader: \(sign.displayName) sun sign, born \(profile.birthDate.map { $0.description } ?? "null") at \(profile.birthTime.map { $0.description } ?? "null") local time (\(profile.birthZone.identifier)).
             Date: \(date). Current tropical placements: \(sky).
             Style: poetic brass-orrery imagery, warm, specific, reflective, second person.
             Treat astrology as creative entertainment. Do not claim certainty, diagnose health,

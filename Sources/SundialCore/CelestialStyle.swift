@@ -12,6 +12,10 @@ public enum CelestialStyle: Int, CaseIterable, Sendable {
     case cosmicViolet
     case solarBronze
     case brassWatch
+    case fire
+    case earth
+    case air
+    case water
 
     public var ordinal: Int { rawValue }
 
@@ -24,6 +28,10 @@ public enum CelestialStyle: Int, CaseIterable, Sendable {
         case .cosmicViolet: return "COSMIC_VIOLET"
         case .solarBronze: return "SOLAR_BRONZE"
         case .brassWatch: return "BRASS_WATCH"
+        case .fire: return "FIRE"
+        case .earth: return "EARTH"
+        case .air: return "AIR"
+        case .water: return "WATER"
         }
     }
 
@@ -34,6 +42,25 @@ public enum CelestialStyle: Int, CaseIterable, Sendable {
     public var instrumentColor: ARGB { properties.instrumentColor }
     public var chromeColor: ARGB { properties.chromeColor }
     public var brassFace: Bool { properties.brassFace }
+    /// Element palettes are selected automatically in astrology mode, not listed in settings.
+    public var pickable: Bool { properties.pickable }
+
+    public static var pickableCases: [CelestialStyle] { allCases.filter(\.pickable) }
+
+    public static func forElement(_ element: Zodiac.Element) -> CelestialStyle {
+        switch element {
+        case .fire: return .fire
+        case .earth: return .earth
+        case .air: return .air
+        case .water: return .water
+        }
+    }
+
+    /// Brass wins; otherwise astrology uses the reader's element instead of the saved palette.
+    public static func effective(_ selected: CelestialStyle, _ profile: ZodiacProfile) -> CelestialStyle {
+        if selected.brassFace { return selected }
+        return profile.enabled ? forElement(profile.resolvedSign().element) : selected
+    }
 
     private var properties: Properties {
         switch self {
@@ -52,6 +79,10 @@ public enum CelestialStyle: Int, CaseIterable, Sendable {
                 chromeColor: 0xFFEB_D393,
                 brassFace: true
             )
+        case .fire: return Properties("Fire", 0xFF2A_0703, 0xFF8C_2A0B, 0xFFFF_B347, 0xFFFF_EBD6, pickable: false)
+        case .earth: return Properties("Earth", 0xFF0D_1507, 0xFF3F_5B1F, 0xFFD9_C47C, 0xFFF1_EEDA, pickable: false)
+        case .air: return Properties("Air", 0xFF0B_1424, 0xFF58_7DA6, 0xFFE4_F1FF, 0xFFF6_FAFF, pickable: false)
+        case .water: return Properties("Water", 0xFF02_1A1F, 0xFF0E_6A73, 0xFF7F_E6DE, 0xFFDD_FAF7, pickable: false)
         }
     }
 
@@ -64,9 +95,11 @@ public enum CelestialStyle: Int, CaseIterable, Sendable {
         let instrumentColor: ARGB
         let chromeColor: ARGB
         let brassFace: Bool
+        let pickable: Bool
 
         init(_ displayName: String, _ baseColor: ARGB, _ haloColor: ARGB, _ accentColor: ARGB,
-             _ instrumentColor: ARGB, chromeColor: ARGB? = nil, brassFace: Bool = false) {
+             _ instrumentColor: ARGB, chromeColor: ARGB? = nil, brassFace: Bool = false,
+             pickable: Bool = true) {
             self.displayName = displayName
             self.baseColor = baseColor
             self.haloColor = haloColor
@@ -74,6 +107,7 @@ public enum CelestialStyle: Int, CaseIterable, Sendable {
             self.instrumentColor = instrumentColor
             self.chromeColor = chromeColor ?? instrumentColor
             self.brassFace = brassFace
+            self.pickable = pickable
         }
     }
 }
