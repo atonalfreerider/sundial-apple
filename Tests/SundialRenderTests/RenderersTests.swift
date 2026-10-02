@@ -115,8 +115,8 @@ final class RenderersTests: XCTestCase {
         XCTAssertEqual(shade.width, 128)
         XCTAssertEqual(pixel(shade, 0, 0), 0)
         XCTAssertTrue(shade.pixels.allSatisfy { $0 & 0x00FF_FFFF == 0 })
-        // (1 − 0.1) × 255 below the terminator, nearly clear at the sub-solar point.
-        XCTAssertEqual(Colors.alpha(pixel(shade, 64, 100)), 229)
+        // (1 − 0.32) × 255 below the brighter night-side floor, nearly clear at the sub-solar point.
+        XCTAssertEqual(Colors.alpha(pixel(shade, 64, 100)), 173)
         XCTAssertLessThan(Colors.alpha(pixel(shade, 64, 5)), 20)
     }
 
